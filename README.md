@@ -73,7 +73,12 @@ Plugin Friends;
 
 ...
 {
-    bool hasFriend = Friends.Call<bool>("HasFriend", playerId, targetId);
+    var hasFriend = Friends.Call<bool>("HasFriend", playerIdString, friendIdString);
+    ...
+}
+
+OnFriendAdded(IPlayer player, IPlayer friend)
+{
     ...
 }
 ```
