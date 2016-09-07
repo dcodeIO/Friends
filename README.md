@@ -1,6 +1,6 @@
 ﻿Friends
 =======
-Universal friends plugin for the [Oxide modding framework](https://github.com/OxideMod/Oxide).
+Universal friends plugin for the [Oxide modding framework](https://github.com/OxideMod).
 
 Features
 --------
@@ -59,7 +59,7 @@ Contributing
 ------------
 We'll be happy to review your pull request or issue...
 
-* if you'd like to add a language file for your native language.
+* if you'd like to add a your native language.
 * if you'd like to contribute game-specific logic for your favorite game.
 * if you have found a bug or require a specific feature.
 
