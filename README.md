@@ -14,6 +14,16 @@ Features
 * Includes configurable friendly fire
 * Includes configurable door and turret sharing for Rust
 
+Usage
+-----
+As a player, this is how you use the plugin:
+
+| Command                 | Description
+|-------------------------|-------------
+| /friends                | Displays your friends list and essential usage instructions
+| /addfriend *NAME...*    | Adds a player to your friends
+| /removefriend *NAME...* | Removes a player from your friends
+
 Configuration
 -------------
 Once installed, the configuration file becomes available at `oxide/config/Friends.json`. To change your settings, simply edit the file and reload the plugin once afterwards.

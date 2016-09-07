@@ -19,15 +19,15 @@
  See: https://github.com/BattleLink/Friends for details
 */
 #endregion
+
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
+using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "1.0.0")]
+    [Info("Friends", "dcode", "1.0.1")]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
@@ -206,7 +206,7 @@ namespace Oxide.Plugins
                 player.Reply(_("List", player.Id));
                 foreach (var friendId in data.Friends)
                 {
-                    // Sort friends by online status (must be mutual friends to show as online)
+                    // Sort friends by online status and name (must be mutual friends to show online status)
                     var friend = covalence.Players.GetPlayer(friendId);
                     if (friend != null)
                     {
@@ -224,9 +224,11 @@ namespace Oxide.Plugins
                             offlineListReuse.Add("#" + friendId);
                     }
                 }
+                onlineListReuse.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var friendName in onlineListReuse)
                     player.Message(_("ListOnline", player.Id) + " " + friendName);
                 onlineListReuse.Clear();
+                offlineListReuse.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var friendName in offlineListReuse)
                     player.Message(friendName);
                 offlineListReuse.Clear();
