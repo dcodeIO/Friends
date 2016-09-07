@@ -34,7 +34,7 @@ namespace Oxide.Plugins
 
         class ConfigData
         {
-            // DO NOT EDIT! These are the defaults. Edit oxide/config/Frieneds.json instead!
+            // DO NOT EDIT! These are the defaults. Edit oxide/config/Friends.json instead!
 
             public int  MaxFriends = 30;
             public bool DisableFriendlyFire = false;
@@ -56,7 +56,7 @@ namespace Oxide.Plugins
         }
 #endif
 
-        private ConfigData configData;
+        ConfigData configData;
 
         protected override void LoadDefaultConfig()
         {
@@ -67,7 +67,7 @@ namespace Oxide.Plugins
 
         #region Language
 
-        private void registerMessages()
+        void registerMessages()
         {
             // English [en]
             lang.RegisterMessages(new Dictionary<string, string> {
@@ -123,10 +123,9 @@ namespace Oxide.Plugins
 
             }, this, "de");
 
-            // Add your language here!
         }
 
-        private string _(string key, string playerId) => lang.GetMessage(key, this, playerId);
+        string _(string key, string playerId) => lang.GetMessage(key, this, playerId);
 
         #endregion
 
@@ -134,7 +133,7 @@ namespace Oxide.Plugins
 
         class PlayerData { public string Name; public HashSet<string> Friends; }
 
-        private Dictionary<string, PlayerData> playerData;
+        Dictionary<string, PlayerData> playerData;
 
         void loadData() => playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>("Friends");
 
@@ -146,8 +145,8 @@ namespace Oxide.Plugins
 
         #region Hooks
 
-        private readonly object @true = true;
-        private readonly object @false = false;
+        readonly object @true = true;
+        readonly object @false = false;
 
         void Loaded()
         {
@@ -352,7 +351,7 @@ namespace Oxide.Plugins
 
         bool RemoveFriendL(ulong playerId, ulong friendId) => RemoveFriend(playerId.ToString(), friendId.ToString());
 
-        private readonly IPlayer[] EmptyFriendsList = new IPlayer[0];
+        readonly IPlayer[] EmptyFriendsList = new IPlayer[0];
 
         IPlayer[] GetFriends(string playerId)
         {

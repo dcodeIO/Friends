@@ -1,6 +1,6 @@
 ﻿Friends
 =======
-Universal friends plugin for Oxide.
+Universal friends plugin for the [Oxide modding framework](https://github.com/OxideMod/Oxide).
 
 Features
 --------
