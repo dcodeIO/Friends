@@ -20,11 +20,11 @@ Once installed, the configuration file becomes available at `oxide/config/Friend
 | Option                  | Default | Description
 |-------------------------|---------|-------------
 | MaxFriends              | 30      | Limits the number of friends a single player can add
-| DisableFriendlyFire     | false   | Disables friendly fire for friends if supported by the game
-| SendOnlineNotification  | false   | If `true`, sends a chat notification to each friend when a player connects
-| SendOfflineNotification | false   | If `true`, sends a chat notification to each friend when a player disconnects
-| SendAddedNotification   | false   | If `true`, sends a chat notification to the newly added friend
-| SendRemovedNotification | false   | If `true`, sends a chat notification to the removed friend
+| DisableFriendlyFire     | false   | If `true`, disables friendly fire for friends if supported by the game
+| SendOnlineNotification  | true    | If `true`, sends a chat notification to each friend when a player connects
+| SendOfflineNotification | true    | If `true`, sends a chat notification to each friend when a player disconnects
+| SendAddedNotification   | true    | If `true`, sends a chat notification to the newly added friend
+| SendRemovedNotification | true    | If `true`, sends a chat notification to the removed friend
 
 There are a few additional configuration options for specific games:
 
@@ -41,18 +41,18 @@ The API is pretty much straight forward:
 
 | Method                                                        | Description
 |---------------------------------------------------------------|-------------
-| HasFriend(playerId:`string`, friendId:`string`):`bool`        | Returns `true` if player's friends list contains friend.
-| AreMutualFriends(playerId:`string`, friendId:`string`):`bool` | Returns `true` if player's friends list contains friend and friend's friends list contains player.
-| AddFriend(playerId:`string`, friendId:`string`):`bool`        | Adds friend to player's friends list and returns `true` on success.
-| RemoveFriend(playerId:`string`, friendId:`string):`bool`      | Removes friend from player's friends list and returns `true` on success.
-| GetFriends(playerId:`string`):IPlayer[]                       | Returns player's friends as an array of Covalence players.
+| HasFriend(playerId:`string`, friendId:`string`):`bool`        | Returns `true` if player's friends list contains friend
+| AreMutualFriends(playerId:`string`, friendId:`string`):`bool` | Returns `true` if player's friends list contains friend and friend's friends list contains player
+| AddFriend(playerId:`string`, friendId:`string`):`bool`        | Adds friend to player's friends list and returns `true` on success
+| RemoveFriend(playerId:`string`, friendId:`string):`bool`      | Removes friend from player's friends list and returns `true` on success
+| GetFriends(playerId:`string`):IPlayer[]                       | Returns player's friends as an array of Covalence players
 
 Additionally, the plugin emits its own hooks:
 
 | Hook                                                | Description
 |-----------------------------------------------------|-------------
-| OnFriendAdded(player:`IPlayer`, friend:`IPlayer`)   | Called when player adds friend to their friends list.
-| OnFriendRemoved(player:`IPlayer`, friend:`IPlayer`) | Called when player removes friend from their friends list.
+| OnFriendAdded(player:`IPlayer`, friend:`IPlayer`)   | Called when player adds friend to their friends list
+| OnFriendRemoved(player:`IPlayer`, friend:`IPlayer`) | Called when player removes friend from their friends list
 
 Contributing
 ------------
