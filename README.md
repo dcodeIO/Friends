@@ -44,7 +44,7 @@ The API is pretty much straight forward:
 | HasFriend(playerId:`string`, friendId:`string`):`bool`        | Returns `true` if player's friends list contains friend
 | AreMutualFriends(playerId:`string`, friendId:`string`):`bool` | Returns `true` if player's friends list contains friend and friend's friends list contains player
 | AddFriend(playerId:`string`, friendId:`string`):`bool`        | Adds friend to player's friends list and returns `true` on success
-| RemoveFriend(playerId:`string`, friendId:`string):`bool`      | Removes friend from player's friends list and returns `true` on success
+| RemoveFriend(playerId:`string`, friendId:`string`):`bool`     | Removes friend from player's friends list and returns `true` on success
 | GetFriends(playerId:`string`):IPlayer[]                       | Returns player's friends as an array of Covalence players
 
 Additionally, the plugin emits its own hooks:
