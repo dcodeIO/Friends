@@ -76,6 +76,7 @@ namespace Oxide.Plugins
 			{ "CantAddSelf", "You cannot add yourself to your friends." },
 			{ "NoFriends", "You haven't added any friends, yet." },
 			{ "List", "You have {0} of a maximum of {1} friends:" },
+			{ "FriendlistFull", "You have already reached the maximum number of friends." },
 
 			// Chat notifications
 			{ "FriendAddedNotification", "{0} added you as a friend." },
@@ -204,6 +205,11 @@ namespace Oxide.Plugins
 			PlayerData data;
 			if (!Data.TryGetValue(player.Id, out data))
 				Data[player.Id] = data = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() };
+			if (data.Friends.Count >= configData.MaxFriends)
+			{
+				player.Reply(_("FriendlistFull", player.Id));
+				return;
+			}
 			if (!data.Friends.Add(friend.Id))
 			{
 				player.Reply(_("AlreadyAFriend", player.Id), friend.Name);

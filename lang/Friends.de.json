@@ -7,6 +7,7 @@
 	"CantAddSelf": "Du kannst dich nicht selbst als Freund hinzufügen.",
 	"NoFriends": "Du hast noch keine Freunde hinzugefügt.",
 	"List": "Du hast {0} von maximal {1} Freunden:",
+	"FriendlistFull": "Du hast bereits die maximale Anzahl an Freunden erreicht.",
 	"FriendAddedNotification": "{0} hat dich als Freund hinzugefügt.",
 	"FriendRemovedNotification": "{0} hat dich als Freund entfernt.",
 	"FriendOnlineNotification": "{0} ist jetzt online!",
