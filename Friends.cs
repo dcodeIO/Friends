@@ -27,7 +27,7 @@ using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "1.0.1")]
+    [Info("Friends", "dcode", "1.0.1", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {

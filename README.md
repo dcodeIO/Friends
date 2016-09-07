@@ -65,6 +65,19 @@ Additionally, the plugin emits its own hooks:
 | OnFriendAdded(player:`IPlayer`, friend:`IPlayer`)   | Called when player adds friend to their friends list
 | OnFriendRemoved(player:`IPlayer`, friend:`IPlayer`) | Called when player removes friend from their friends list
 
+#### Example
+
+```cs
+[PluginReference]
+Plugin Friends;
+
+...
+{
+    bool hasFriend = Friends.Call<bool>("HasFriend", playerId, targetId);
+    ...
+}
+```
+
 Contributing
 ------------
 We'll be happy to review your pull request or issue...
