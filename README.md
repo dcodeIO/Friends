@@ -1,6 +1,6 @@
 ﻿Friends
 =======
-An universal friends plugin for Oxide.
+Universal friends plugin for Oxide.
 
 Features
 --------
@@ -9,7 +9,7 @@ Features
 * Works for every game Oxide supports with Covalence
 * Can be extended with game-specific logic
 * Exposes an easy to use API to other plugins
-* Aims to be API-compatible with [Friends for Rust](http://oxidemod.org/plugins/friends-api.686/)
+* Aims to be API-compatible with [Friends API for Rust](http://oxidemod.org/plugins/friends-api.686/)
 * Compatible with Rust:IO 3.X / BattleLink
 * Includes configurable friendly fire
 
@@ -26,7 +26,7 @@ Once installed, the configuration file becomes available at `oxide/config/Friend
 | SendAddedNotification   | true    | If `true`, sends a chat notification to the newly added friend
 | SendRemovedNotification | true    | If `true`, sends a chat notification to the removed friend
 
-There are a few additional configuration options for specific games:
+There are additional configuration options for specific games:
 
 #### Rust
 
