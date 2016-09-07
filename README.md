@@ -10,8 +10,9 @@ Features
 * Can be extended with game-specific logic
 * Exposes an easy to use API to other plugins
 * Aims to be API-compatible with [Friends API for Rust](http://oxidemod.org/plugins/friends-api.686/)
-* Compatible with Rust:IO 3.X / BattleLink
+* Compatible with BattleLink / Rust:IO 3.X
 * Includes configurable friendly fire
+* Includes configurable door and turret sharing for Rust
 
 Configuration
 -------------

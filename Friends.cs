@@ -17,6 +17,7 @@
  DEALINGS IN THE SOFTWARE.
 */
 #endregion
+#define RUST
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
 using System.Collections.Generic;
@@ -33,14 +34,15 @@ namespace Oxide.Plugins
 
         class ConfigData
         {
-            public int MaxFriends = 30;
+            // DO NOT EDIT! These are the defaults. Edit oxide/config/Frieneds.json instead!
+
+            public int  MaxFriends = 30;
             public bool DisableFriendlyFire = false;
 
             public bool SendOnlineNotification = true;
             public bool SendOfflineNotification = true;
             public bool SendAddedNotification = true;
             public bool SendRemovedNotification = true;
-
 #if RUST
             public RustConfigData Rust = new RustConfigData();
 #endif
@@ -65,31 +67,64 @@ namespace Oxide.Plugins
 
         #region Language
 
-        private void registerMessages() => lang.RegisterMessages(new Dictionary<string, string>
+        private void registerMessages()
         {
-			// Command replies
-			{ "PlayerNotFound", "There is no player matching that name." },
-            { "NotOnFriendlist", "You don't have a friend matching that name." },
-            { "FriendAdded", "{0} is now one of your friends." },
-            { "FriendRemoved", "{0} is no longer one of your friends." },
-            { "AlreadyAFriend", "{0} is already one of your friends." },
-            { "CantAddSelf", "You cannot add yourself to your friends." },
-            { "NoFriends", "You haven't added any friends, yet." },
-            { "List", "You have {0} of a maximum of {1} friends:" },
-            { "FriendlistFull", "You have already reached the maximum number of friends." },
+            // English [en]
+            lang.RegisterMessages(new Dictionary<string, string> {
 
-			// Chat notifications
-			{ "FriendAddedNotification", "{0} added you as a friend." },
-            { "FriendRemovedNotification", "{0} removed you as a friend." },
-            { "FriendOnlineNotification", "{0} is now online!" },
-            { "FriendOfflineNotification", "{0} is now offline." },
+                // Command replies
+                { "PlayerNotFound", "There is no player matching that name." },
+                { "NotOnFriendlist", "You don't have a friend matching that name." },
+                { "FriendAdded", "{0} is now one of your friends." },
+                { "FriendRemoved", "{0} is no longer one of your friends." },
+                { "AlreadyAFriend", "{0} is already one of your friends." },
+                { "CantAddSelf", "You cannot add yourself to your friends." },
+                { "NoFriends", "You haven't added any friends, yet." },
+                { "List", "You have {0} friends:" },
+                { "FriendlistFull", "You have already reached the maximum number of friends." },
 
-			// Usage text
-			{ "UsageAdd", "Use /addfriend NAME... to add a friend" },
-            { "UsageRemove", "Use /removefriend NAME... to remove one" },
-            { "HelpText", "Type /friends to manage your friends" }
+                // Chat notifications
+                { "FriendAddedNotification", "{0} added you as a friend." },
+                { "FriendRemovedNotification", "{0} removed you as a friend." },
+                { "FriendOnlineNotification", "{0} is now online!" },
+                { "FriendOfflineNotification", "{0} is now offline." },
+            
+                // Usage text
+                { "UsageAdd", "Use /addfriend NAME... to add a friend" },
+                { "UsageRemove", "Use /removefriend NAME... to remove one" },
+                { "HelpText", "Type /friends to manage your friends" }
 
-        }, this, "en");
+            }, this, "en");
+
+            // Deutsch [de]
+            lang.RegisterMessages(new Dictionary<string, string> {
+
+                // Command replies
+                { "PlayerNotFound", "Es gibt keinen Spieler unter diesem Namen." },
+                { "NotOnFriendlist", "Auf deiner Freundeliste befindet sich kein Spieler mit diesem Namen." },
+                { "FriendAdded", "{0} ist nun einer deiner Freunde." },
+                { "FriendRemoved", "{0} ist nun nicht mehr dein Freund." },
+                { "AlreadyAFriend", "{0} ist bereits dein Freund." },
+                { "CantAddSelf", "Du kannst dich nicht selbst als Freund hinzufügen." },
+                { "NoFriends", "Du hast noch keine Freunde hinzugefügt." },
+                { "List", "Du hast {0} von maximal {1} Freunden:" },
+                { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
+
+                // Chat notifications
+                { "FriendAddedNotification", "{0} hat dich als Freund hinzugefügt." },
+                { "FriendRemovedNotification", "{0} hat dich als Freund entfernt." },
+                { "FriendOnlineNotification", "{0} ist jetzt online!" },
+                { "FriendOfflineNotification", "{0} ist jetzt offline." },
+            
+                // Usage text
+                { "UsageAdd", "Verwende /addfriend NAME... um Freunde hinzuzufügen" },
+                { "UsageRemove", "Verwende /removefriend NAME... um Freunde zu entfernen" },
+                { "HelpText", "Schreibe /friends um deine Freunde zu verwalten" }
+
+            }, this, "de");
+
+            // Add your language here!
+        }
 
         private string _(string key, string playerId) => lang.GetMessage(key, this, playerId);
 
@@ -99,97 +134,88 @@ namespace Oxide.Plugins
 
         class PlayerData { public string Name; public HashSet<string> Friends; }
 
-        private Dictionary<string, PlayerData> Data { get; private set; }
+        private Dictionary<string, PlayerData> playerData;
 
-        void loadData() => Data = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>("Friends");
+        void loadData() => playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>("Friends");
 
         void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
-        void saveData() => Interface.Oxide.DataFileSystem.WriteObject("Friends", Data);
+        void saveData() => Interface.Oxide.DataFileSystem.WriteObject("Friends", playerData);
 
         #endregion
 
         #region Hooks
 
+        private readonly object @true = true;
+        private readonly object @false = false;
+
         void Loaded()
         {
-            registerMessages();
             loadConfig();
             loadData();
-            if (Data == null)
-                Data = new Dictionary<string, PlayerData>();
+            registerMessages();
+            if (playerData == null)
+                playerData = new Dictionary<string, PlayerData>();
         }
 
         void OnUserConnected(IPlayer player)
         {
-            if (!configData.SendOnlineNotification)
-                return;
+            // Update the player's remembered name if necessary
             PlayerData data;
-            if (!Data.TryGetValue(player.Id, out data) || data.Friends.Count == 0)
-                return;
-            foreach (var friendId in data.Friends)
-            {
-                var friend = covalence.Players.GetPlayer(friendId);
-                if (friend != null && friend.IsConnected)
-                    friend.Message(_("FriendOnlineNotification", friend.Id), player.Name);
-            }
+            if (playerData.TryGetValue(player.Id, out data))
+                if (player.Name != data.Name)
+                {
+                    data.Name = player.Name;
+                    saveData();
+                }
+
+            // Send online notifications if enabled
+            if (configData.SendOnlineNotification && data != null)
+                foreach (var friendId in data.Friends)
+                {
+                    var friend = covalence.Players.GetPlayer(friendId);
+                    if (friend != null && friend.IsConnected)
+                        friend.Message(_("FriendOnlineNotification", friend.Id), player.Name);
+                }
         }
 
         void OnUserDisconnected(IPlayer player)
         {
-            if (!configData.SendOnlineNotification)
-                return;
+            // Send offline notifications if enabled
             PlayerData data;
-            if (!Data.TryGetValue(player.Id, out data) || data.Friends.Count == 0)
-                return;
-            foreach (var friendId in data.Friends)
-            {
-                var friend = covalence.Players.GetPlayer(friendId);
-                if (friend != null && friend.IsConnected)
-                    friend.Message(_("FriendOfflineNotification", friend.Id), player.Name);
-            }
+            if (configData.SendOnlineNotification && playerData.TryGetValue(player.Id, out data))
+                foreach (var friendId in data.Friends)
+                {
+                    var friend = covalence.Players.GetPlayer(friendId);
+                    if (friend != null && friend.IsConnected)
+                        friend.Message(_("FriendOfflineNotification", friend.Id), player.Name);
+                }
         }
 
         [Command("/friends")]
         void cmdFriends(IPlayer player, string command, string[] args)
         {
             PlayerData data;
-            int count;
-            if (!Data.TryGetValue(player.Id, out data) || (count = data.Friends.Count) == 0)
+            if (playerData.TryGetValue(player.Id, out data) && data.Friends.Count > 0)
             {
+                player.Reply(_("List", player.Id));
+                foreach (var friendId in data.Friends)
+                    player.Message(GetPlayerName(friendId));
+            }
+            else
                 player.Reply(_("NoFriends", player.Id));
-                return;
-            }
-            var sb = new StringBuilder();
-            sb.Append(string.Format(_("List", player.Id), count))
-              .AppendLine();
-            foreach (var friendId in data.Friends)
-            {
-                string friendName;
-                var friend = covalence.Players.GetPlayer(friendId);
-                if (friend == null)
-                {
-                    PlayerData friendData;
-                    if (Data.TryGetValue(friendId, out friendData))
-                        friendName = friendData.Name;
-                    else
-                        friendName = "#" + friendId;
-                }
-                else
-                    friendName = friend.Name;
-                sb.Append("  ")
-                  .Append(friendName)
-                  .AppendLine();
-            }
-            sb.Append(_("UsageAdd", player.Id))
-              .AppendLine()
-              .Append(_("UsageRemove", player.Id));
-            player.Reply(sb.ToString());
+            player.Message(_("UsageAdd", player.Id));
+            player.Message(_("UsageRemove", player.Id));
         }
 
         [Command("/addfriend")]
         void cmdAddFriend(IPlayer player, string command, string[] args)
         {
+            if (args.Length < 1)
+            {
+                player.Reply(_("UsageAdd", player.Id));
+                return;
+            }
             var name = string.Join(" ", args);
             var friend = covalence.Players.FindPlayer(name);
             if (friend == null)
@@ -203,26 +229,40 @@ namespace Oxide.Plugins
                 return;
             }
             PlayerData data;
-            if (!Data.TryGetValue(player.Id, out data))
-                Data[player.Id] = data = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() };
-            if (data.Friends.Count >= configData.MaxFriends)
+            if (playerData.TryGetValue(player.Id, out data))
+            {
+                if (data.Friends.Count >= configData.MaxFriends)
+                {
+                    player.Reply(_("FriendlistFull", player.Id));
+                    return;
+                }
+            }
+            else if (configData.MaxFriends < 1)
             {
                 player.Reply(_("FriendlistFull", player.Id));
                 return;
             }
-            if (!data.Friends.Add(friend.Id))
+            else
+                playerData[player.Id] = data = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() };
+            if (data.Friends.Add(friend.Id))
+            {
+                player.Reply(_("FriendAdded", player.Id), friend.Name);
+                saveData();
+            }
+            else
             {
                 player.Reply(_("AlreadyAFriend", player.Id), friend.Name);
-                return;
             }
-            player.Reply(_("FriendAdded", player.Id), friend.Name);
-            saveData();
-            CallHook("FriendAdded", player, friend);
         }
 
         [Command("/removefriend", "/deletefriend")]
         void cmdRemoveFriend(IPlayer player, string command, string[] args)
         {
+            if (args.Length < 1)
+            {
+                player.Reply(_("UsageRemove", player.Id));
+                return;
+            }
             var name = string.Join(" ", args);
             var friend = covalence.Players.FindPlayer(name);
             if (friend == null)
@@ -245,7 +285,7 @@ namespace Oxide.Plugins
         bool HasFriend(string playerId, string friendId)
         {
             PlayerData data;
-            return Data.TryGetValue(playerId, out data) && data.Friends.Contains(friendId);
+            return playerData.TryGetValue(playerId, out data) && data.Friends.Contains(friendId);
         }
 
         bool HasFriendS(string playerId, string friendId) => HasFriend(playerId, friendId);
@@ -267,16 +307,18 @@ namespace Oxide.Plugins
             if (friend == null)
                 return false;
             PlayerData data;
-            if (!Data.TryGetValue(player.Id, out data))
-                data = Data[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
-            else
+            if (playerData.TryGetValue(player.Id, out data))
                 data.Friends.Add(friend.Id);
-            if (!Data.TryGetValue(friend.Id, out data)) // also add a blank reverse entry, remembering the friend's name
-                Data[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
+            else
+                data = playerData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
+            if (!playerData.TryGetValue(friend.Id, out data)) // also add a blank reverse entry, remembering the friend's name
+                playerData[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
             saveData();
-            Interface.Oxide.CallHook("FriendAdded", player, friend);
             if (configData.SendAddedNotification)
                 friend.Message(_("FriendAddedNotification", friend.Id), player.Name);
+            Interface.Oxide.NextTick(() => {
+                Interface.Oxide.CallHook("FriendAdded", player, friend);
+            });
             return true;
         }
 
@@ -293,14 +335,17 @@ namespace Oxide.Plugins
             if (friend == null)
                 return false;
             PlayerData data;
-            if (!Data.TryGetValue(player.Id, out data) || !data.Friends.Contains(friend.Id))
-                return false;
-            data.Friends.Remove(friend.Id);
-            saveData();
-            Interface.Oxide.CallHook("FriendRemoved", player, friend);
-            if (configData.SendRemovedNotification)
-                friend.Message(_("FriendRemovedNotification", friend.Id), player.Name);
-            return true;
+            if (playerData.TryGetValue(player.Id, out data) && data.Friends.Remove(friend.Id))
+            {
+                saveData();
+                if (configData.SendRemovedNotification)
+                    friend.Message(_("FriendRemovedNotification", friend.Id), player.Name);
+                Interface.Oxide.NextTick(() => {
+                    Interface.Oxide.CallHook("FriendRemoved", player, friend);
+                });
+                return true;
+            }
+            return false;
         }
 
         bool RemoveFriendS(string playerId, string friendId) => RemoveFriend(playerId, friendId);
@@ -312,75 +357,64 @@ namespace Oxide.Plugins
         IPlayer[] GetFriends(string playerId)
         {
             PlayerData data;
-            if (!Data.TryGetValue(playerId, out data))
-                return EmptyFriendsList;
-            var friends = new List<IPlayer>();
-            foreach (var friendId in data.Friends)
+            if (playerData.TryGetValue(playerId, out data) && data.Friends.Count > 0)
             {
-                var friend = covalence.Players.GetPlayer(friendId);
-                if (friend != null)
-                    friends.Add(friend);
+                var friends = new List<IPlayer>();
+                foreach (var friendId in data.Friends)
+                {
+                    var friend = covalence.Players.GetPlayer(friendId);
+                    if (friend != null)
+                        friends.Add(friend);
+                }
+                return friends.ToArray();
             }
-            return friends.ToArray();
+            return EmptyFriendsList;
         }
 
         IPlayer[] GetFriends(ulong playerId) => GetFriends(playerId.ToString());
+
+        public string GetPlayerName(string playerId)
+        {
+            var iplayer = covalence.Players.GetPlayer(playerId);
+            if (iplayer == null)
+            {
+                PlayerData data;
+                if (playerData.TryGetValue(playerId, out data))
+                    return data.Name;
+            }
+            else
+                return iplayer.Name;
+            return "#" + playerId;
+        }
 
         #endregion
 
         #region Game-specific: Rust
 
 #if RUST
-        private readonly FieldInfo CodeLock_whitelistPlayers = typeof(CodeLock).GetField("whitelistPlayers", BindingFlags.Instance | BindingFlags.NonPublic);
-
         void SendHelpText(BasePlayer player) => player.ChatMessage(_("HelpText", player.userID.ToString()));
 
-        object OnTurretSetTarget(AutoTurret turret, BaseCombatEntity target)
+        object OnTurretTarget(AutoTurret turret, BaseCombatEntity target)
         {
-            if (!configData.Rust.ShareAutoTurrets || !(target is BasePlayer))
-                return null;
-            var player = (BasePlayer)target;
-            if (turret.IsAuthed(player) || HasFriendL(turret.OwnerID, player.userID))
-                return false;
-            return null;
+            BasePlayer player;
+            return configData.Rust.ShareAutoTurrets && (player = (target as BasePlayer)) != null && HasFriendL(turret.OwnerID, player.userID)
+                ? @false // cancel targeting if ShareAutoTurrets is enabled and target is a friend of the turret's owner
+                : null;  // otherwise use default behaviour
         }
 
-        object CanUseDoor(BasePlayer player, BaseLock codelock)
+        object OnPlayerAttack(BasePlayer attacker, HitInfo hit)
         {
-            if (!configData.Rust.ShareCodeLocks || !(codelock is CodeLock))
-                return null;
-            if (((IList<ulong>)CodeLock_whitelistPlayers.GetValue(codelock)).Contains(player.userID) || HasFriendL(codelock.GetParentEntity().OwnerID, player.userID))
-                return true;
-            return true;
+            BasePlayer victim;
+            return configData.DisableFriendlyFire && (victim = (hit.HitEntity as BasePlayer)) != null && attacker != victim && HasFriendL(attacker.userID, victim.userID)
+                ? @false // cancel attack if DisableFriendlyFire is enabled and victim is a friend of the attacker
+                : null;  // otherwise use default behaviour
         }
 
-        void onAttackShared(BasePlayer attacker, BasePlayer victim, HitInfo hit)
+        object CanUseDoor(BasePlayer player, CodeLock codeLock)
         {
-            if (attacker == victim)
-                return;
-            if (!HasFriendL(attacker.userID, victim.userID))
-                return;
-            hit.damageTypes = new Rust.DamageTypeList();
-            hit.DidHit = false;
-            hit.HitEntity = null;
-            hit.Initiator = null;
-            hit.DoHitEffects = false;
-        }
-
-        void OnPlayerAttack(BasePlayer attacker, HitInfo hit)
-        {
-            if (!configData.DisableFriendlyFire)
-                return;
-            if (hit.HitEntity is BasePlayer)
-                onAttackShared(attacker, hit.HitEntity as BasePlayer, hit);
-        }
-
-        void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo hit)
-        {
-            if (!configData.DisableFriendlyFire)
-                return;
-            if (entity is BasePlayer && hit.Initiator is BasePlayer)
-                onAttackShared(hit.Initiator as BasePlayer, entity as BasePlayer, hit);
+            return configData.Rust.ShareCodeLocks && HasFriendL(codeLock.GetParentEntity().OwnerID, player.userID)
+                ? @true  // allow door usage if ShareCodeLocks is enabled and player is a friend of the door's owner
+                : null;  // otherwise use default behaviour
         }
 #endif
 
