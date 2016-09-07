@@ -82,6 +82,7 @@ namespace Oxide.Plugins
                 { "CantAddSelf", "You cannot add yourself to your friends." },
                 { "NoFriends", "You haven't added any friends, yet." },
                 { "List", "You have {0} friends:" },
+                { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
 
                 // Chat notifications
@@ -109,6 +110,7 @@ namespace Oxide.Plugins
                 { "CantAddSelf", "Du kannst dich nicht selbst als Freund hinzufügen." },
                 { "NoFriends", "Du hast noch keine Freunde hinzugefügt." },
                 { "List", "Du hast {0} von maximal {1} Freunden:" },
+                { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
 
                 // Chat notifications
@@ -126,7 +128,7 @@ namespace Oxide.Plugins
 
         }
 
-        string _(string key, string playerId) => lang.GetMessage(key, this, playerId);
+        string _(string key, string translateFor) => lang.GetMessage(key, this, translateFor);
 
         #endregion
 
@@ -136,11 +138,11 @@ namespace Oxide.Plugins
 
         Dictionary<string, PlayerData> playerData;
 
-        void loadData() => playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>("Friends");
+        void loadData() => playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>(Name);
 
         void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
-        void saveData() => Interface.Oxide.DataFileSystem.WriteObject("Friends", playerData);
+        void saveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, playerData);
 
         #endregion
 
@@ -192,6 +194,9 @@ namespace Oxide.Plugins
                 }
         }
 
+        readonly List<string> onlineListReuse = new List<string>(30);
+        readonly List<string> offlineListReuse = new List<string>(30);
+
         [Command("friends")]
         void cmdFriends(IPlayer player, string command, string[] args)
         {
@@ -200,7 +205,31 @@ namespace Oxide.Plugins
             {
                 player.Reply(_("List", player.Id));
                 foreach (var friendId in data.Friends)
-                    player.Message(GetPlayerName(friendId));
+                {
+                    // Sort friends by online status (must be mutual friends to show as online)
+                    var friend = covalence.Players.GetPlayer(friendId);
+                    if (friend != null)
+                    {
+                        if (friend.IsConnected && HasFriend(friend.Id, player.Id))
+                            onlineListReuse.Add(friend.Name);
+                        else
+                            offlineListReuse.Add(friend.Name);
+                    }
+                    else
+                    {
+                        PlayerData friendData;
+                        if (playerData.TryGetValue(friendId, out friendData))
+                            offlineListReuse.Add(friendData.Name);
+                        else
+                            offlineListReuse.Add("#" + friendId);
+                    }
+                }
+                foreach (var friendName in onlineListReuse)
+                    player.Message(_("ListOnline", player.Id) + " " + friendName);
+                onlineListReuse.Clear();
+                foreach (var friendName in offlineListReuse)
+                    player.Message(friendName);
+                offlineListReuse.Clear();
             }
             else
                 player.Reply(_("NoFriends", player.Id));
