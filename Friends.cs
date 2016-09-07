@@ -97,15 +97,15 @@ namespace Oxide.Plugins
 
         #region Persistence
 
-        private class PlayerData { public string Name; public HashSet<string> Friends; }
+        class PlayerData { public string Name; public HashSet<string> Friends; }
 
-        private Dictionary<string, PlayerData> Data;
+        private Dictionary<string, PlayerData> Data { get; private set; }
 
-        private void loadData() => Data = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>("Friends");
+        void loadData() => Data = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>("Friends");
 
-        private void loadConfig() => configData = Config.ReadObject<ConfigData>();
+        void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
-        private void saveData() => Interface.Oxide.DataFileSystem.WriteObject("Friends", Data);
+        void saveData() => Interface.Oxide.DataFileSystem.WriteObject("Friends", Data);
 
         #endregion
 
@@ -187,7 +187,7 @@ namespace Oxide.Plugins
             player.Reply(sb.ToString());
         }
 
-        [Command("/addfriend", "+friend")]
+        [Command("/addfriend")]
         void cmdAddFriend(IPlayer player, string command, string[] args)
         {
             var name = string.Join(" ", args);
@@ -220,7 +220,7 @@ namespace Oxide.Plugins
             CallHook("FriendAdded", player, friend);
         }
 
-        [Command("/removefriend", "-friend")]
+        [Command("/removefriend", "/deletefriend")]
         void cmdRemoveFriend(IPlayer player, string command, string[] args)
         {
             var name = string.Join(" ", args);
@@ -307,7 +307,7 @@ namespace Oxide.Plugins
 
         bool RemoveFriendL(ulong playerId, ulong friendId) => RemoveFriend(playerId.ToString(), friendId.ToString());
 
-        private IPlayer[] EmptyFriendsList = new IPlayer[0];
+        private readonly IPlayer[] EmptyFriendsList = new IPlayer[0];
 
         IPlayer[] GetFriends(string playerId)
         {
@@ -331,12 +331,11 @@ namespace Oxide.Plugins
         #region Game-specific: Rust
 
 #if RUST
-
         private readonly FieldInfo CodeLock_whitelistPlayers = typeof(CodeLock).GetField("whitelistPlayers", BindingFlags.Instance | BindingFlags.NonPublic);
 
-        private void SendHelpText(BasePlayer player) => player.ChatMessage(_("HelpText", player.userID.ToString()));
+        void SendHelpText(BasePlayer player) => player.ChatMessage(_("HelpText", player.userID.ToString()));
 
-        private object OnTurretSetTarget(AutoTurret turret, BaseCombatEntity target)
+        object OnTurretSetTarget(AutoTurret turret, BaseCombatEntity target)
         {
             if (!configData.Rust.ShareAutoTurrets || !(target is BasePlayer))
                 return null;
@@ -346,7 +345,7 @@ namespace Oxide.Plugins
             return null;
         }
 
-        private object CanUseDoor(BasePlayer player, BaseLock codelock)
+        object CanUseDoor(BasePlayer player, BaseLock codelock)
         {
             if (!configData.Rust.ShareCodeLocks || !(codelock is CodeLock))
                 return null;
@@ -355,7 +354,7 @@ namespace Oxide.Plugins
             return true;
         }
 
-        private void onAttackShared(BasePlayer attacker, BasePlayer victim, HitInfo hit)
+        void onAttackShared(BasePlayer attacker, BasePlayer victim, HitInfo hit)
         {
             if (attacker == victim)
                 return;
@@ -383,7 +382,6 @@ namespace Oxide.Plugins
             if (entity is BasePlayer && hit.Initiator is BasePlayer)
                 onAttackShared(hit.Initiator as BasePlayer, entity as BasePlayer, hit);
         }
-
 #endif
 
         #endregion
