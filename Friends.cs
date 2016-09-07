@@ -191,7 +191,7 @@ namespace Oxide.Plugins
                 }
         }
 
-        [Command("/friends")]
+        [Command("friends")]
         void cmdFriends(IPlayer player, string command, string[] args)
         {
             PlayerData data;
@@ -207,7 +207,7 @@ namespace Oxide.Plugins
             player.Message(_("UsageRemove", player.Id));
         }
 
-        [Command("/addfriend")]
+        [Command("addfriend")]
         void cmdAddFriend(IPlayer player, string command, string[] args)
         {
             if (args.Length < 1)
@@ -254,7 +254,7 @@ namespace Oxide.Plugins
             }
         }
 
-        [Command("/removefriend", "/deletefriend")]
+        [Command("removefriend", "deletefriend")]
         void cmdRemoveFriend(IPlayer player, string command, string[] args)
         {
             if (args.Length < 1)
