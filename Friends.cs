@@ -46,6 +46,8 @@ namespace Oxide.Plugins
             public bool SendOfflineNotification = true;
             public bool SendAddedNotification = true;
             public bool SendRemovedNotification = false;
+            public bool EnableFriendChat = true;
+            public bool LimitFriendChatToMutualFriends = true;
 #if RUST
             public RustConfigData Rust = new RustConfigData();
 #endif
@@ -84,6 +86,7 @@ namespace Oxide.Plugins
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
                 { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
+                { "FriendChatSent", "Sent to {0} friends: {1}" },
 
                 // Chat notifications
                 { "FriendAddedNotification", "{0} added you as a friend." },
@@ -94,6 +97,7 @@ namespace Oxide.Plugins
                 // Usage text
                 { "UsageAdd", "Use /addfriend NAME... to add a friend" },
                 { "UsageRemove", "Use /removefriend NAME... to remove a friend" },
+                { "UsageFriendChat", "Use /f MESSAGE... to send a message to all of your friends" },
                 { "HelpText", "Type /friends to manage your friends" }
 
             }, this, "en");
@@ -113,6 +117,7 @@ namespace Oxide.Plugins
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
                 { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entwerder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
+                { "FriendChatSent", "An {0} Freunde gesendet: {1}" },
 
                 // Chat notifications
                 { "FriendAddedNotification", "{0} hat dich als Freund hinzugefügt." },
@@ -123,6 +128,7 @@ namespace Oxide.Plugins
                 // Usage text
                 { "UsageAdd", "Verwende /addfriend NAME... um Freunde hinzuzufügen" },
                 { "UsageRemove", "Verwende /removefriend NAME... um Freunde zu entfernen" },
+                { "UsageFriendChat", "Verwende /f NACHRICHT... um eine Nachricht an alle Freunde zu senden" },
                 { "HelpText", "Schreibe /friends um deine Freunde zu verwalten" }
 
             }, this, "de");
@@ -348,6 +354,8 @@ namespace Oxide.Plugins
                 player.Reply(_("NoFriends", player.Id));
             player.Message(_("UsageAdd", player.Id));
             player.Message(_("UsageRemove", player.Id));
+            if (configData.EnableFriendChat)
+                player.Message(_("UsageFriendChat", player.Id));
         }
 
         [Command("addfriend")]
@@ -404,6 +412,45 @@ namespace Oxide.Plugins
                 player.Reply(_("FriendRemoved", player.Id), friend.Name);
             else
                 player.Reply(_("NotOnFriendlist", player.Id));
+        }
+
+        [Command("f")]
+        void cmdFriendChat(IPlayer player, string command, string[] args)
+        {
+            if (!configData.EnableFriendChat)
+                return;
+            if (args.Length < 1)
+            {
+                player.Reply(_("UsageFriendChat", player.Id));
+                return;
+            }
+            var message = string.Join(" ", args).Trim();
+            if (message.Length == 0)
+            {
+                player.Reply(_("UsageFriendChat", player.Id));
+                return;
+            }
+            PlayerData data;
+            if (!playerData.TryGetValue(player.Id, out data) || data.Friends.Count == 0)
+            {
+                player.Reply(_("NoFriends", player.Id));
+                return;
+            }
+            int messagesSent = 0;
+            foreach (var friendId in data.Friends)
+            {
+                var friend = covalence.Players.GetPlayer(friendId);
+                if (friend != null && friend.IsConnected)
+                {
+                    PlayerData friendData;
+                    if (!configData.LimitFriendChatToMutualFriends || (playerData.TryGetValue(friend.Id, out friendData) && friendData.Friends.Contains(player.Id)))
+                    {
+                        friend.Message(player.Name + ": " + message);
+                        ++messagesSent;
+                    }
+                }
+            }
+            player.Reply(_("FriendChatSent", player.Id), messagesSent, message);
         }
 
         #endregion
