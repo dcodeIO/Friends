@@ -125,6 +125,9 @@ namespace Oxide.Plugins
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
                 { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entwerder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
                 { "FriendChatSent", "An {0} Freunde gesendet: {1}" },
+                { "FriendChatReceived", "[Freundes-Chat] {0}: {1}" },
+                { "PrivateChatSent", "Gesendet an {0}: {1}" },
+                { "PrivateChatReceived", "[Privat-Chat] {0}: {1}" },
 
                 // Chat notifications
                 { "FriendAddedNotification", "{0} hat dich als Freund hinzugefügt." },
@@ -143,7 +146,7 @@ namespace Oxide.Plugins
 
         }
 
-        string _(string key, IPlayer translateFor) => lang.GetMessage(key, this, translateFor.Id);
+        string _(string key, IPlayer recipient) => lang.GetMessage(key, this, recipient.Id);
 
         #endregion
 
@@ -151,15 +154,15 @@ namespace Oxide.Plugins
 
         class PlayerData { public string Name; public HashSet<string> Friends; }
 
-        Dictionary<string, PlayerData> playerData;
+        Dictionary<string, PlayerData> friendsData;
 
-        Dictionary<string, HashSet<string>> reverseData;
+        Dictionary<string, HashSet<string>> reverseFriendsData;
 
-        void loadData() => playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>(Name);
+        void loadData() => friendsData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>(Name);
 
         void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
-        void saveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, playerData);
+        void saveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, friendsData);
 
         #endregion
 
@@ -205,7 +208,7 @@ namespace Oxide.Plugins
             if (iplayer == null)
             {
                 PlayerData data;
-                if (playerData.TryGetValue(playerIdStr, out data))
+                if (friendsData.TryGetValue(playerIdStr, out data))
                     return data.Name;
             }
             else
@@ -269,18 +272,18 @@ namespace Oxide.Plugins
             loadConfig();
             loadData();
             registerMessages();
-            reverseData = new Dictionary<string, HashSet<string>>();
-            if (playerData == null)
-                playerData = new Dictionary<string, PlayerData>();
+            reverseFriendsData = new Dictionary<string, HashSet<string>>();
+            if (friendsData == null)
+                friendsData = new Dictionary<string, PlayerData>();
             else
-                foreach (var kv in playerData)
+                foreach (var kv in friendsData)
                     foreach (var friendId in kv.Value.Friends)
                     {
                         HashSet<string> reverseFriendData;
-                        if (reverseData.TryGetValue(friendId, out reverseFriendData))
+                        if (reverseFriendsData.TryGetValue(friendId, out reverseFriendData))
                             reverseFriendData.Add(kv.Key);
                         else
-                            reverseData.Add(friendId, new HashSet<string>() { kv.Key });
+                            reverseFriendsData.Add(friendId, new HashSet<string>() { kv.Key });
                     }
         }
 
@@ -288,7 +291,7 @@ namespace Oxide.Plugins
         {
             // Update the player's remembered name if necessary
             PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data))
+            if (friendsData.TryGetValue(player.Id, out data))
                 if (player.Name != data.Name)
                 {
                     data.Name = player.Name;
@@ -309,7 +312,7 @@ namespace Oxide.Plugins
         {
             // Send offline notifications if enabled
             PlayerData data;
-            if (configData.SendOnlineNotification && playerData.TryGetValue(player.Id, out data))
+            if (configData.SendOnlineNotification && friendsData.TryGetValue(player.Id, out data))
                 foreach (var friendId in data.Friends)
                 {
                     var friend = covalence.Players.GetPlayer(friendId);
@@ -323,7 +326,7 @@ namespace Oxide.Plugins
         {
             PlayerData data;
             int count;
-            if (playerData.TryGetValue(player.Id, out data) && (count = data.Friends.Count) > 0)
+            if (friendsData.TryGetValue(player.Id, out data) && (count = data.Friends.Count) > 0)
             {
                 List<string> onlineList = new List<string>(configData.MaxFriends);
                 List<string> offlineList = new List<string>(configData.MaxFriends);
@@ -342,7 +345,7 @@ namespace Oxide.Plugins
                     else
                     {
                         PlayerData friendData;
-                        if (playerData.TryGetValue(friendId, out friendData))
+                        if (friendsData.TryGetValue(friendId, out friendData))
                             offlineList.Add(friendData.Name);
                         else
                             offlineList.Add("#" + friendId);
@@ -364,6 +367,8 @@ namespace Oxide.Plugins
             player.Message(_("UsageRemove", player));
             if (configData.EnableFriendChat)
                 player.Message(_("UsageFriendChat", player));
+            if (configData.EnablePrivateChat)
+                player.Message(_("UsagePrivateChat", player));
         }
 
         [Command("addfriend")]
@@ -393,7 +398,7 @@ namespace Oxide.Plugins
                 return;
             }
             PlayerData data;
-            if (configData.MaxFriends < 1 || (playerData.TryGetValue(player.Id, out data) && data.Friends.Count >= configData.MaxFriends))
+            if (configData.MaxFriends < 1 || (friendsData.TryGetValue(player.Id, out data) && data.Friends.Count >= configData.MaxFriends))
                 player.Reply(_("FriendlistFull", player));
             else if (AddFriend(player.Id, friend.Id))
                 player.Reply(_("FriendAdded", player), friend.Name);
@@ -439,7 +444,7 @@ namespace Oxide.Plugins
                 return;
             }
             PlayerData data;
-            if (!playerData.TryGetValue(player.Id, out data) || data.Friends.Count == 0)
+            if (!friendsData.TryGetValue(player.Id, out data) || data.Friends.Count == 0)
             {
                 player.Reply(_("NoFriends", player));
                 return;
@@ -451,7 +456,7 @@ namespace Oxide.Plugins
                 if (friend != null && friend.IsConnected)
                 {
                     PlayerData friendData;
-                    if (!configData.LimitFriendChatToMutualFriends || (playerData.TryGetValue(friend.Id, out friendData) && friendData.Friends.Contains(player.Id)))
+                    if (!configData.LimitFriendChatToMutualFriends || (friendsData.TryGetValue(friend.Id, out friendData) && friendData.Friends.Contains(player.Id)))
                     {
                         friend.Message(_("FriendChatReceived", friend), player.Name, message);
                         ++messagesSent;
@@ -489,8 +494,8 @@ namespace Oxide.Plugins
                     player.Reply(_("UsagePrivateChat", player));
                     return;
                 }
-                name = message.Substring(0, index);
-                message = message.Substring(index + 1);
+                name = message.Substring(0, index).Trim();
+                message = message.Substring(index + 1).Trim();
             }
             if (name.Length == 0 || message.Length == 0)
             {
@@ -509,7 +514,7 @@ namespace Oxide.Plugins
                 player.Reply(_("MultipleMatches", player));
                 return;
             }
-            player.Message(_("PrivateChatSent", recipient), recipient.Name, message);
+            player.Message(_("PrivateChatSent", player), recipient.Name, message);
             recipient.Message(_("PrivateChatReceived", recipient), player.Name, message);
         }
 
@@ -534,7 +539,7 @@ namespace Oxide.Plugins
             if (ReferenceEquals(friendId, null))
                 throw new ArgumentNullException("friendId");
             PlayerData data;
-            return playerData.TryGetValue(playerId.ToString(), out data) && data.Friends.Contains(friendId.ToString());
+            return friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Contains(friendId.ToString());
         }
 
         // Tests if player and friend are mutual friends, by id.
@@ -547,8 +552,8 @@ namespace Oxide.Plugins
             var playerIdStr = playerId.ToString();
             var friendIdStr = friendId.ToString();
             PlayerData pData, fData;
-            return playerData.TryGetValue(playerIdStr, out pData)
-                && playerData.TryGetValue(friendIdStr, out fData)
+            return friendsData.TryGetValue(playerIdStr, out pData)
+                && friendsData.TryGetValue(friendIdStr, out fData)
                 && pData.Friends.Contains(friendIdStr)
                 && fData.Friends.Contains(playerIdStr);
         }
@@ -567,21 +572,21 @@ namespace Oxide.Plugins
             if (friend == null)
                 return false;
             PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data))
+            if (friendsData.TryGetValue(player.Id, out data))
             {
                 if (data.Friends.Count >= configData.MaxFriends || !data.Friends.Add(friend.Id))
                     return false;
             }
             else
-                data = playerData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
-            if (!playerData.TryGetValue(friend.Id, out data)) // also add a blank reverse entry remembering the friend's name
-                playerData[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
+                data = friendsData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
+            if (!friendsData.TryGetValue(friend.Id, out data)) // also add a blank reverse entry remembering the friend's name
+                friendsData[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
             saveData();
             HashSet<string> reverseFriendData;
-            if (reverseData.TryGetValue(friend.Id, out reverseFriendData))
+            if (reverseFriendsData.TryGetValue(friend.Id, out reverseFriendData))
                 reverseFriendData.Add(player.Id);
             else
-                reverseData.Add(friend.Id, new HashSet<string>() { player.Id});
+                reverseFriendsData.Add(friend.Id, new HashSet<string>() { player.Id});
             if (configData.SendAddedNotification)
                 friend.Message(_("FriendAddedNotification", friend), player.Name);
             Interface.Oxide.NextTick(() => {
@@ -604,15 +609,15 @@ namespace Oxide.Plugins
             if (friend == null)
                 return false;
             PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data) && data.Friends.Remove(friend.Id))
+            if (friendsData.TryGetValue(player.Id, out data) && data.Friends.Remove(friend.Id))
             {
                 saveData();
                 HashSet<string> reverseFriendData;
-                if (reverseData.TryGetValue(friend.Id, out reverseFriendData))
+                if (reverseFriendsData.TryGetValue(friend.Id, out reverseFriendData))
                 {
                     reverseFriendData.Remove(player.Id);
                     if (reverseFriendData.Count == 0)
-                        reverseData.Remove(friend.Id);
+                        reverseFriendsData.Remove(friend.Id);
                 }
                 if (configData.SendRemovedNotification)
                     friend.Message(_("FriendRemovedNotification", friend), player.Name);
@@ -636,7 +641,7 @@ namespace Oxide.Plugins
                 playerId = playerId.ToString();
             }
             PlayerData data;
-            if (playerData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0)
+            if (friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0)
                 return argumentType == null
                     ? data.Friends.ToArray()
                     : makeTypedArray(argumentType, data.Friends);
@@ -653,7 +658,7 @@ namespace Oxide.Plugins
                 throw new ArgumentNullException("friendId");
             Type argumentType = playerId is string ? null : playerId.GetType();
             HashSet<string> reverseFriendData;
-            if (reverseData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0)
+            if (reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0)
                 return argumentType == null
                     ? reverseFriendData.ToArray()
                     : makeTypedArray(argumentType, reverseFriendData);
