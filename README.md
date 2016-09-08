@@ -61,7 +61,7 @@ The API is pretty much straight forward:
 
 **Note** that all methods take arbitrary parameter types (i.e. `string`, `ulong` or `int`), which makes them independent
 of what the game being modded uses to represent player ids. **GetFriends** and **GetFriendsShared** in particular return an
-array of the specified parameter's type (i.e. `ulong[]` if friendId was `ulong`).
+array of the specified parameter's type (i.e. `ulong[]` if the parameter was `ulong`).
 
 Other methods declared within the source file exist for compatibility purposes only and should not be used in new projects.
 
@@ -80,7 +80,7 @@ Plugin Friends;
 
 ...
 {
-    var hasFriend = Friends.Call<bool>("HasFriend", playerId, friendId);
+    var hasFriend = Friends?.Call<bool>("HasFriend", playerId, friendId) ?? false;
     ...
 }
 
