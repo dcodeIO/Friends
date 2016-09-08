@@ -13,7 +13,7 @@ Features
 * Compatible with BattleLink / Rust:IO 3.X
 * Includes configurable friendly fire
 * Includes configurable door and turret sharing for Rust
-* Includes configurable friends and private chat
+* Includes configurable friends broadcast and private chat
 
 Usage
 -----
@@ -24,7 +24,7 @@ As a player, this is how you use the plugin:
 | /friends                     | Displays your friends list and essential usage instructions
 | /addfriend *NAME...*         | Adds a player to your friends
 | /removefriend *NAME...*      | Removes a player from your friends
-| /fm *MESSAGE...*             | Sends a message to all of your friends
+| /fm *MESSAGE...*             | Broadcasts a message to all of your friends
 | /pm "*NAME...*" *MESSAGE...* | Sends a private message to the specified player
 
 You can also use the respective unique player id (i.e. Steam ID) instead of a player's name in case that there are multiple
@@ -65,13 +65,13 @@ The API is pretty much straight forward:
 | Method                                                     | Description
 |------------------------------------------------------------|-------------
 | GetMaxFriends():`int`                                      | Gets the maximum number of friends allowed per player.
-| GetPlayerName(playerId:`object`):`string`                  | Gets player's current or remembered name, by id.
-| HasFriend(playerId:`object`, friendId:`object`):`bool`     | Tests if player added friend to their friends list, by id.
-| AreFriends(playerId:`object`, friendId:`object`):`bool`    | Tests if player and friend are mutual friends, by id.
-| AddFriend(playerId:`object`, friendId:`object`):`bool`     | Adds friend to player's friends list, by id.
-| RemoveFriend(playerId:`object`, friendId:`object`):`bool`  | Removes friend from player's friends list, by id.
-| GetFriends(playerId:`object`):`object`                     | Gets an array of player's friends, by id.
-| GetFriendsReverse(friendId:`object`):`object`              | Gets an array of players who have added friend to their friends list, by id.
+| GetPlayerName(playerId:`object`):`string`                  | Gets *player*'s current or remembered name, by id.
+| HasFriend(playerId:`object`, friendId:`object`):`bool`     | Tests if *player* added *friend* to their friends list, by id.
+| AreFriends(playerId:`object`, friendId:`object`):`bool`    | Tests if *player* and *friend* are mutual friends, by id.
+| AddFriend(playerId:`object`, friendId:`object`):`bool`     | Adds *friend* to *player*'s friends list, by id.
+| RemoveFriend(playerId:`object`, friendId:`object`):`bool`  | Removes *friend* from *player*'s friends list, by id.
+| GetFriends(playerId:`object`):`object`                     | Gets an array of *player*'s friends, by id.
+| GetFriendsReverse(friendId:`object`):`object`              | Gets an array of *players who have added *friend* to their friends list, by id.
 
 **Note** that all methods take arbitrary parameter types (i.e. `string`, `ulong` or `int`), which makes them independent
 of what the game being modded uses to represent player ids. **GetFriends** and **GetFriendsShared** in particular return an
