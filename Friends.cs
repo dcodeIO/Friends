@@ -19,15 +19,16 @@
  See: https://github.com/BattleLink/Friends for details
 */
 #endregion
-
+#define RUST
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "1.0.1", ResourceId = 2120)]
+    [Info("Friends", "dcode", "3.0.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
@@ -37,7 +38,7 @@ namespace Oxide.Plugins
         {
             // DO NOT EDIT! These are the defaults. Edit oxide/config/Friends.json instead!
 
-            public int  MaxFriends = 30;
+            public int MaxFriends = 30;
             public bool DisableFriendlyFire = false;
 
             public bool SendOnlineNotification = true;
@@ -59,10 +60,7 @@ namespace Oxide.Plugins
 
         ConfigData configData;
 
-        protected override void LoadDefaultConfig()
-        {
-            Config.WriteObject(new ConfigData(), true);
-        }
+        protected override void LoadDefaultConfig() => Config.WriteObject(configData = new ConfigData(), true);
 
         #endregion
 
@@ -138,6 +136,8 @@ namespace Oxide.Plugins
 
         Dictionary<string, PlayerData> playerData;
 
+        Dictionary<string, HashSet<string>> reverseData;
+
         void loadData() => playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>(Name);
 
         void loadConfig() => configData = Config.ReadObject<ConfigData>();
@@ -148,6 +148,7 @@ namespace Oxide.Plugins
 
         #region Hooks
 
+        // Object references to boolean values for use with short if statements.
         readonly object @true = true;
         readonly object @false = false;
 
@@ -156,8 +157,20 @@ namespace Oxide.Plugins
             loadConfig();
             loadData();
             registerMessages();
+            reverseData = new Dictionary<string, HashSet<string>>();
             if (playerData == null)
                 playerData = new Dictionary<string, PlayerData>();
+            else
+                // Rebuild reverse lookup
+                foreach (var kv in playerData)
+                    foreach (var friendId in kv.Value.Friends)
+                    {
+                        HashSet<string> reverseFriendData;
+                        if (reverseData.TryGetValue(friendId, out reverseFriendData))
+                            reverseFriendData.Add(kv.Key);
+                        else
+                            reverseData.Add(friendId, new HashSet<string>() { kv.Key });
+                    }
         }
 
         void OnUserConnected(IPlayer player)
@@ -194,8 +207,9 @@ namespace Oxide.Plugins
                 }
         }
 
-        readonly List<string> onlineListReuse = new List<string>(30);
-        readonly List<string> offlineListReuse = new List<string>(30);
+        // Reusable collections meant to reduce allocations / garbage
+        readonly List<string> onlineList = new List<string>(30);
+        readonly List<string> offlineList = new List<string>(30);
 
         [Command("friends")]
         void cmdFriends(IPlayer player, string command, string[] args)
@@ -211,27 +225,28 @@ namespace Oxide.Plugins
                     if (friend != null)
                     {
                         if (friend.IsConnected && HasFriend(friend.Id, player.Id))
-                            onlineListReuse.Add(friend.Name);
+                            onlineList.Add(friend.Name);
                         else
-                            offlineListReuse.Add(friend.Name);
+                            offlineList.Add(friend.Name);
                     }
                     else
                     {
                         PlayerData friendData;
                         if (playerData.TryGetValue(friendId, out friendData))
-                            offlineListReuse.Add(friendData.Name);
+                            offlineList.Add(friendData.Name);
                         else
-                            offlineListReuse.Add("#" + friendId);
+                            offlineList.Add("#" + friendId);
                     }
                 }
-                onlineListReuse.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var friendName in onlineListReuse)
-                    player.Message(_("ListOnline", player.Id) + " " + friendName);
-                onlineListReuse.Clear();
-                offlineListReuse.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var friendName in offlineListReuse)
+                onlineList.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
+                var onlineText = _("ListOnline", player.Id);
+                foreach (var friendName in onlineList)
+                    player.Message(onlineText + " " + friendName);
+                onlineList.Clear();
+                offlineList.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
+                foreach (var friendName in offlineList)
                     player.Message(friendName);
-                offlineListReuse.Clear();
+                offlineList.Clear();
             }
             else
                 player.Reply(_("NoFriends", player.Id));
@@ -260,30 +275,12 @@ namespace Oxide.Plugins
                 return;
             }
             PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data))
-            {
-                if (data.Friends.Count >= configData.MaxFriends)
-                {
-                    player.Reply(_("FriendlistFull", player.Id));
-                    return;
-                }
-            }
-            else if (configData.MaxFriends < 1)
-            {
+            if (configData.MaxFriends < 1 || playerData.TryGetValue(player.Id, out data) && data.Friends.Count >= configData.MaxFriends)
                 player.Reply(_("FriendlistFull", player.Id));
-                return;
-            }
-            else
-                playerData[player.Id] = data = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() };
-            if (data.Friends.Add(friend.Id))
-            {
+            else if (AddFriend(player.Id, friend.Id))
                 player.Reply(_("FriendAdded", player.Id), friend.Name);
-                saveData();
-            }
             else
-            {
                 player.Reply(_("AlreadyAFriend", player.Id), friend.Name);
-            }
         }
 
         [Command("removefriend", "deletefriend")]
@@ -297,115 +294,31 @@ namespace Oxide.Plugins
             var name = string.Join(" ", args);
             var friend = covalence.Players.FindPlayer(name);
             if (friend == null)
-            {
                 player.Reply(_("NoSuchPlayer", player.Id));
-                return;
-            }
-            if (!RemoveFriend(player.Id, friend.Id))
-                player.Reply(_("NoSuchFriend", player.Id));
-            else
+            else if (RemoveFriend(player.Id, friend.Id))
                 player.Reply(_("FriendRemoved", player.Id), friend.Name);
+            else
+                player.Reply(_("NoSuchFriend", player.Id));
         }
 
         #endregion
 
         #region API
 
+        // Internal method to determine whether this plugin is compatible with BattleLink.
+        // Compatibility with BattleLink basically means that friendships are non-mutual
+        // by default because if they were not, this would lead to abuse of live locations,
+        // and that API methods always have a generic implementation.
         bool IsBattleLinkCompatible() => true;
 
-        bool HasFriend(string playerId, string friendId)
-        {
-            PlayerData data;
-            return playerData.TryGetValue(playerId, out data) && data.Friends.Contains(friendId);
-        }
+        // Returns the maximum number of friends allowed per player.
+        int MaxFriends() => configData.MaxFriends;
 
-        bool HasFriendS(string playerId, string friendId) => HasFriend(playerId, friendId);
-
-        bool HasFriendL(ulong playerId, ulong friendId) => HasFriend(playerId.ToString(), friendId.ToString());
-
-        bool AreMutualFriends(string playerId, string friendId) => HasFriend(playerId, friendId) && HasFriend(friendId, playerId);
-
-        bool AreMutualFriendsS(string playerId, string friendId) => AreMutualFriends(playerId, friendId);
-
-        bool AreMutualFriendsL(ulong playerId, ulong friendId) => AreMutualFriends(playerId.ToString(), friendId.ToString());
-
-        bool AddFriend(string playerId, string friendId)
-        {
-            var player = covalence.Players.GetPlayer(playerId);
-            if (player == null)
-                return false;
-            var friend = covalence.Players.GetPlayer(friendId);
-            if (friend == null)
-                return false;
-            PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data))
-                data.Friends.Add(friend.Id);
-            else
-                data = playerData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
-            if (!playerData.TryGetValue(friend.Id, out data)) // also add a blank reverse entry, remembering the friend's name
-                playerData[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
-            saveData();
-            if (configData.SendAddedNotification)
-                friend.Message(_("FriendAddedNotification", friend.Id), player.Name);
-            Interface.Oxide.NextTick(() => {
-                Interface.Oxide.CallHook("FriendAdded", player, friend);
-            });
-            return true;
-        }
-
-        bool AddFriendS(string playerId, string friendId) => AddFriend(playerId, friendId);
-
-        bool AddFriendL(ulong playerId, ulong friendId) => AddFriend(playerId.ToString(), friendId.ToString());
-
-        bool RemoveFriend(string playerId, string friendId)
-        {
-            var player = covalence.Players.GetPlayer(playerId);
-            if (player == null)
-                return false;
-            var friend = covalence.Players.GetPlayer(friendId);
-            if (friend == null)
-                return false;
-            PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data) && data.Friends.Remove(friend.Id))
-            {
-                saveData();
-                if (configData.SendRemovedNotification)
-                    friend.Message(_("FriendRemovedNotification", friend.Id), player.Name);
-                Interface.Oxide.NextTick(() => {
-                    Interface.Oxide.CallHook("FriendRemoved", player, friend);
-                });
-                return true;
-            }
-            return false;
-        }
-
-        bool RemoveFriendS(string playerId, string friendId) => RemoveFriend(playerId, friendId);
-
-        bool RemoveFriendL(ulong playerId, ulong friendId) => RemoveFriend(playerId.ToString(), friendId.ToString());
-
-        readonly IPlayer[] EmptyFriendsList = new IPlayer[0];
-
-        IPlayer[] GetFriends(string playerId)
-        {
-            PlayerData data;
-            if (playerData.TryGetValue(playerId, out data) && data.Friends.Count > 0)
-            {
-                var friends = new List<IPlayer>();
-                foreach (var friendId in data.Friends)
-                {
-                    var friend = covalence.Players.GetPlayer(friendId);
-                    if (friend != null)
-                        friends.Add(friend);
-                }
-                return friends.ToArray();
-            }
-            return EmptyFriendsList;
-        }
-
-        IPlayer[] GetFriends(ulong playerId) => GetFriends(playerId.ToString());
-
+        // Gets a player's name, by id.
         public string GetPlayerName(string playerId)
         {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
             var iplayer = covalence.Players.GetPlayer(playerId);
             if (iplayer == null)
             {
@@ -418,6 +331,162 @@ namespace Oxide.Plugins
             return "#" + playerId;
         }
 
+        // Gets a player's name, by id, generic.
+        public string GetPlayerName<T>(T playerId) where T : struct => GetPlayerName(playerId.ToString());
+
+        // Tests if player added friend to their friends list, by id.
+        bool HasFriend(string playerId, string friendId)
+        {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
+            if (ReferenceEquals(friendId, null))
+                throw new ArgumentNullException("friendId");
+            PlayerData data;
+            return playerData.TryGetValue(playerId, out data) && data.Friends.Contains(friendId);
+        }
+
+        // Tests if player added friend to their friends list, by id, generic.
+        bool HasFriend<T>(T playerId, T friendId) where T : struct => HasFriend(playerId.ToString(), friendId.ToString());
+
+        // Tests if player and friend are mutual friends, by id.
+        bool AreFriends(string playerId, string friendId) => HasFriend(playerId, friendId) && HasFriend(friendId, playerId);
+
+        // Tests if player and friend are mutual friends, by id, generic.
+        bool AreFriends<T>(T playerId, T friendId) where T : struct {
+            var playerIdStr = playerId.ToString();
+            var friendIdStr = friendId.ToString();
+            return HasFriend(playerIdStr, friendIdStr) && HasFriend(friendIdStr, playerIdStr);
+        }
+
+        // Adds friend to player's friends list, by id.
+        bool AddFriend(string playerId, string friendId)
+        {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
+            if (ReferenceEquals(friendId, null))
+                throw new ArgumentNullException("friendId");
+            var player = covalence.Players.GetPlayer(playerId);
+            if (player == null)
+                return false;
+            var friend = covalence.Players.GetPlayer(friendId);
+            if (friend == null)
+                return false;
+            PlayerData data;
+            if (playerData.TryGetValue(player.Id, out data))
+            {
+                if (data.Friends.Count >= configData.MaxFriends)
+                    return false;
+                data.Friends.Add(friend.Id);
+            }
+            else
+                data = playerData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
+            if (!playerData.TryGetValue(friend.Id, out data)) // also add a blank reverse entry remembering the friend's name
+                playerData[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
+            saveData();
+            HashSet<string> reverseFriendData;
+            if (reverseData.TryGetValue(friend.Id, out reverseFriendData))
+                reverseFriendData.Add(player.Id);
+            else
+                reverseData.Add(friend.Id, new HashSet<string>() { player.Id});
+            if (configData.SendAddedNotification)
+                friend.Message(_("FriendAddedNotification", friend.Id), player.Name);
+            Interface.Oxide.NextTick(() => {
+                Interface.Oxide.CallHook("FriendAdded", player, friend);
+            });
+            return true;
+        }
+
+        // Adds friend to player's friends list, by id, generic.
+        bool AddFriend<T>(T playerId, T friendId) where T : struct => AddFriend(playerId.ToString(), friendId.ToString());
+
+        // Removes friend from player's friends list, by id.
+        bool RemoveFriend(string playerId, string friendId)
+        {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
+            if (ReferenceEquals(friendId, null))
+                throw new ArgumentNullException("friendId");
+            var player = covalence.Players.GetPlayer(playerId);
+            if (player == null)
+                return false;
+            var friend = covalence.Players.GetPlayer(friendId);
+            if (friend == null)
+                return false;
+            PlayerData data;
+            if (playerData.TryGetValue(player.Id, out data) && data.Friends.Remove(friend.Id))
+            {
+                saveData();
+                HashSet<string> reverseFriendData;
+                if (reverseData.TryGetValue(friend.Id, out reverseFriendData))
+                {
+                    reverseFriendData.Remove(player.Id);
+                    if (reverseFriendData.Count == 0)
+                        reverseData.Remove(friend.Id);
+                }
+                if (configData.SendRemovedNotification)
+                    friend.Message(_("FriendRemovedNotification", friend.Id), player.Name);
+                Interface.Oxide.NextTick(() => {
+                    Interface.Oxide.CallHook("FriendRemoved", player, friend);
+                });
+                return true;
+            }
+            return false;
+        }
+
+        // Removes friend from player's friends list, by id, generic.
+        bool RemoveFriend<T>(T playerId, T friendId) where T : struct => RemoveFriend(playerId.ToString(), friendId.ToString());
+
+        // Reusable empty collections meant to reduce allocations / garbage
+        readonly string[] emptyStringArray = new string[0];
+        
+        // Gets an array of player's friends, by id.
+        string[] GetFriends(string playerId)
+        {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
+            PlayerData data;
+            if (playerData.TryGetValue(playerId, out data) && data.Friends.Count > 0)
+                return data.Friends.ToArray();
+            else
+                return emptyStringArray;
+        }
+
+        // Gets an array of player's friends, by id, generic.
+        T[] GetFriends<T>(T playerId) where T : struct => GetFriends(playerId.ToString()).Select(i => (T)Convert.ChangeType(i, typeof(T))).ToArray();
+
+        // Gets an array of players who have added friend to their friends list, by id.
+        string[] GetFriendsReverse(string friendId)
+        {
+            if (ReferenceEquals(friendId, null))
+                throw new ArgumentNullException("friendId");
+            HashSet<string> reverseFriendData;
+            if (reverseData.TryGetValue(friendId, out reverseFriendData) && reverseFriendData.Count > 0)
+                return reverseFriendData.ToArray();
+            else
+                return emptyStringArray;
+        }
+
+        // Gets an array of players who have added friend to their friends list, by id, generic.
+        T[] GetFriendsReverse<T>(T friendId) where T : struct => GetFriendsReverse(friendId.ToString()).Select(i => (T)Convert.ChangeType(i, typeof(T))).ToArray();
+
+        // Compatibility: ulong
+        bool AddFriend(ulong playerId, ulong friendId) => AddFriend(playerId.ToString(), friendId.ToString());
+        bool RemoveFriend(ulong playerId, ulong friendId) => HasFriend(playerId.ToString(), friendId.ToString());
+        bool HasFriend(ulong playerId, ulong friendId) => HasFriend(playerId.ToString(), friendId.ToString());
+        bool AreFriends(ulong playerId, ulong friendId) => AreFriends(playerId.ToString(), friendId.ToString());
+        bool IsFriend(ulong playerId, ulong friendId) => HasFriend(friendId, playerId);
+        public ulong[] GetFriendList(ulong playerId) => GetFriends(playerId);
+        public ulong[] IsFriendOf(ulong friendId) => GetFriendsReverse(friendId);
+
+        // Compatibility: string
+        bool AddFriendS(string playerId, string friendId) => AddFriend(playerId, friendId);
+        bool RemoveFriendS(string playerId, string friendId) => HasFriend(playerId, friendId);
+        bool HasFriendS(string playerId, string friendId) => HasFriend(playerId, friendId);
+        bool AreFriendsS(string playerId, string friendId) => AreFriends(playerId, friendId);
+        bool IsFriendS(string playerId, string friendId) => HasFriend(friendId, playerId);
+        public string[] GetFriendListS(string playerId) => GetFriends(playerId);
+        public string[] IsFriendOfS(string friendId) => GetFriendsReverse(friendId);
+
         #endregion
 
         #region Game-specific: Rust
@@ -428,7 +497,7 @@ namespace Oxide.Plugins
         object OnTurretTarget(AutoTurret turret, BaseCombatEntity target)
         {
             BasePlayer player;
-            return configData.Rust.ShareAutoTurrets && (player = (target as BasePlayer)) != null && HasFriendL(turret.OwnerID, player.userID)
+            return configData.Rust.ShareAutoTurrets && (player = (target as BasePlayer)) != null && HasFriend(turret.OwnerID, player.userID)
                 ? @false // cancel targeting if ShareAutoTurrets is enabled and target is a friend of the turret's owner
                 : null;  // otherwise use default behaviour
         }
@@ -436,14 +505,14 @@ namespace Oxide.Plugins
         object OnPlayerAttack(BasePlayer attacker, HitInfo hit)
         {
             BasePlayer victim;
-            return configData.DisableFriendlyFire && (victim = (hit.HitEntity as BasePlayer)) != null && attacker != victim && HasFriendL(attacker.userID, victim.userID)
+            return configData.DisableFriendlyFire && (victim = (hit.HitEntity as BasePlayer)) != null && attacker != victim && HasFriend(attacker.userID, victim.userID)
                 ? @false // cancel attack if DisableFriendlyFire is enabled and victim is a friend of the attacker
                 : null;  // otherwise use default behaviour
         }
 
         object CanUseDoor(BasePlayer player, CodeLock codeLock)
         {
-            return configData.Rust.ShareCodeLocks && HasFriendL(codeLock.GetParentEntity().OwnerID, player.userID)
+            return configData.Rust.ShareCodeLocks && HasFriend(codeLock.GetParentEntity().OwnerID, player.userID)
                 ? @true  // allow door usage if ShareCodeLocks is enabled and player is a friend of the door's owner
                 : null;  // otherwise use default behaviour
         }

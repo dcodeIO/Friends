@@ -50,13 +50,27 @@ API
 ---
 The API is pretty much straight forward:
 
-| Method                                                        | Description
-|---------------------------------------------------------------|-------------
-| HasFriend(playerId:`string`, friendId:`string`):`bool`        | Returns `true` if player's friends list contains friend
-| AreMutualFriends(playerId:`string`, friendId:`string`):`bool` | Returns `true` if player's friends list contains friend and friend's friends list contains player
-| AddFriend(playerId:`string`, friendId:`string`):`bool`        | Adds friend to player's friends list and returns `true` on success
-| RemoveFriend(playerId:`string`, friendId:`string`):`bool`     | Removes friend from player's friends list and returns `true` on success
-| GetFriends(playerId:`string`):`IPlayer[]`                     | Returns player's friends as an array of Covalence players
+| Method                                                     | Description
+|------------------------------------------------------------|-------------
+| HasFriend(playerId:`string`, friendId:`string`):`bool`     | Tests if player added friend to their friends list, by id.
+| AreFriends(playerId:`object`, friendId:`object`):`bool`    | Tests if player and friend are mutual friends, by id.
+| AddFriend(playerId:`object`, friendId:`object`):`bool`     | Adds friend to player's friends list, by id.
+| RemoveFriend(playerId:`object`, friendId:`object`):`bool`  | Removes friend from player's friends list, by id.
+| GetFriends(playerId:`object`):`string[]`                   | Gets an array of player's friends, by id.
+| GetFriendsReverse(friendId:`object`):`string[]`            | Gets an array of players who have added friend to their friends list, by id.
+
+Every API method that accepts one or more player ids also has a generic override that handles values other than strings (i.e. `ulong` in Rust):
+
+| Non-generic method                                         | Generic method
+|------------------------------------------------------------|----------------
+| HasFriend(playerId:`string`, friendId:`string`):`bool`     | HasFriend&lt;`T`&gt;(playerId:`T`, friendId:`T`):`bool`
+| AreFriends(playerId:`object`, friendId:`object`):`bool`    | AreFriends&lt;`T`&gt;(playerId:`T`, friendId:`T`):`bool`
+| AddFriend(playerId:`object`, friendId:`object`):`bool`     | AddFriend&lt;`T`&gt;(playerId:`T`, friendId:`T`):`bool`
+| RemoveFriend(playerId:`object`, friendId:`object`):`bool`  | RemoveFriend&lt;`T`&gt;(playerId:`T`, friendId:`T`):`bool`
+| GetFriends(playerId:`object`):`string[]`                   | GetFriends&lt;`T`&gt;(playerId:`T`):`T[]`
+| GetFriendsReverse(friendId:`object`):`string[]`            | GetFriendsReverse&lt;`T`&gt;(friendId:`T`):`T[]` 
+
+Other methods that utilizy generic methods exist for compatibility purposes only and should not be used in new projects.
 
 Additionally, the plugin emits its own hooks:
 
@@ -73,7 +87,7 @@ Plugin Friends;
 
 ...
 {
-    var hasFriend = Friends.Call<bool>("HasFriend", playerIdString, friendIdString);
+    var hasFriend = Friends.Call<bool>("HasFriend", playerId, friendId);
     ...
 }
 
