@@ -26,6 +26,7 @@ using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
@@ -42,12 +43,14 @@ namespace Oxide.Plugins
             public int MaxFriends = 30;
             public bool DisableFriendlyFire = false;
 
+            public bool EnableFriendChat = false;
+            public bool LimitFriendChatToMutualFriends = true;
+            public bool EnablePrivateChat = false;
+
             public bool SendOnlineNotification = true;
             public bool SendOfflineNotification = true;
             public bool SendAddedNotification = true;
             public bool SendRemovedNotification = false;
-            public bool EnableFriendChat = true;
-            public bool LimitFriendChatToMutualFriends = true;
 #if RUST
             public RustConfigData Rust = new RustConfigData();
 #endif
@@ -87,6 +90,9 @@ namespace Oxide.Plugins
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
                 { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
                 { "FriendChatSent", "Sent to {0} friends: {1}" },
+                { "FriendChatReceived", "[Friend Chat] {0}: {1}" },
+                { "PrivateChatSent", "Sent to {0}: {1}" },
+                { "PrivateChatReceived", "[Private Chat] {0}: {1}" },
 
                 // Chat notifications
                 { "FriendAddedNotification", "{0} added you as a friend." },
@@ -97,7 +103,8 @@ namespace Oxide.Plugins
                 // Usage text
                 { "UsageAdd", "Use /addfriend NAME... to add a friend" },
                 { "UsageRemove", "Use /removefriend NAME... to remove a friend" },
-                { "UsageFriendChat", "Use /f MESSAGE... to send a message to all of your friends" },
+                { "UsageFriendChat", "Use /fm MESSAGE... to send a message to all of your friends" },
+                { "UsagePrivateChat", "Use /pm \"NAME...\" MESSAGE... to send a private message" },
                 { "HelpText", "Type /friends to manage your friends" }
 
             }, this, "en");
@@ -128,14 +135,15 @@ namespace Oxide.Plugins
                 // Usage text
                 { "UsageAdd", "Verwende /addfriend NAME... um Freunde hinzuzufügen" },
                 { "UsageRemove", "Verwende /removefriend NAME... um Freunde zu entfernen" },
-                { "UsageFriendChat", "Verwende /f NACHRICHT... um eine Nachricht an alle Freunde zu senden" },
+                { "UsageFriendChat", "Verwende /fm NACHRICHT... um eine Nachricht an alle Freunde zu senden" },
+                { "UsagePrivateChat", "Verwende /pm \"NAME...\" NACHRICHT... um eine private Nachricht zu senden" },
                 { "HelpText", "Schreibe /friends um deine Freunde zu verwalten" }
 
             }, this, "de");
 
         }
 
-        string _(string key, string translateFor) => lang.GetMessage(key, this, translateFor);
+        string _(string key, IPlayer translateFor) => lang.GetMessage(key, this, translateFor.Id);
 
         #endregion
 
@@ -293,7 +301,7 @@ namespace Oxide.Plugins
                 {
                     var friend = covalence.Players.GetPlayer(friendId);
                     if (friend != null && friend.IsConnected)
-                        friend.Message(_("FriendOnlineNotification", friend.Id), player.Name);
+                        friend.Message(_("FriendOnlineNotification", friend), player.Name);
                 }
         }
 
@@ -306,7 +314,7 @@ namespace Oxide.Plugins
                 {
                     var friend = covalence.Players.GetPlayer(friendId);
                     if (friend != null && friend.IsConnected)
-                        friend.Message(_("FriendOfflineNotification", friend.Id), player.Name);
+                        friend.Message(_("FriendOfflineNotification", friend), player.Name);
                 }
         }
 
@@ -319,7 +327,7 @@ namespace Oxide.Plugins
             {
                 List<string> onlineList = new List<string>(configData.MaxFriends);
                 List<string> offlineList = new List<string>(configData.MaxFriends);
-                player.Reply(_("List", player.Id), count, configData.MaxFriends);
+                player.Reply(_("List", player), count, configData.MaxFriends);
                 foreach (var friendId in data.Friends)
                 {
                     // Sort friends by online status and name (must be mutual friends to show online status)
@@ -341,7 +349,7 @@ namespace Oxide.Plugins
                     }
                 }
                 onlineList.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
-                var onlineText = _("ListOnline", player.Id);
+                var onlineText = _("ListOnline", player);
                 foreach (var friendName in onlineList)
                     player.Message(onlineText + " " + friendName);
                 onlineList.Clear();
@@ -351,11 +359,11 @@ namespace Oxide.Plugins
                 offlineList.Clear();
             }
             else
-                player.Reply(_("NoFriends", player.Id));
-            player.Message(_("UsageAdd", player.Id));
-            player.Message(_("UsageRemove", player.Id));
+                player.Reply(_("NoFriends", player));
+            player.Message(_("UsageAdd", player));
+            player.Message(_("UsageRemove", player));
             if (configData.EnableFriendChat)
-                player.Message(_("UsageFriendChat", player.Id));
+                player.Message(_("UsageFriendChat", player));
         }
 
         [Command("addfriend")]
@@ -363,7 +371,7 @@ namespace Oxide.Plugins
         {
             if (args.Length < 1)
             {
-                player.Reply(_("UsageAdd", player.Id));
+                player.Reply(_("UsageAdd", player));
                 return;
             }
             var nameOrId = string.Join(" ", args);
@@ -371,26 +379,26 @@ namespace Oxide.Plugins
             var friend = FindPlayer(nameOrId, out multipleMatches);
             if (friend == null)
             {
-                player.Reply(_("PlayerNotFound", player.Id));
+                player.Reply(_("PlayerNotFound", player));
                 return;
             }
             else if (multipleMatches)
             {
-                player.Reply(_("MultipleMatches", player.Id));
+                player.Reply(_("MultipleMatches", player));
                 return;
             }
             if (friend.Id == player.Id)
             {
-                player.Reply(_("CantAddSelf", player.Id));
+                player.Reply(_("CantAddSelf", player));
                 return;
             }
             PlayerData data;
             if (configData.MaxFriends < 1 || (playerData.TryGetValue(player.Id, out data) && data.Friends.Count >= configData.MaxFriends))
-                player.Reply(_("FriendlistFull", player.Id));
+                player.Reply(_("FriendlistFull", player));
             else if (AddFriend(player.Id, friend.Id))
-                player.Reply(_("FriendAdded", player.Id), friend.Name);
+                player.Reply(_("FriendAdded", player), friend.Name);
             else
-                player.Reply(_("AlreadyAFriend", player.Id), friend.Name);
+                player.Reply(_("AlreadyAFriend", player), friend.Name);
         }
 
         [Command("removefriend", "deletefriend")]
@@ -398,42 +406,42 @@ namespace Oxide.Plugins
         {
             if (args.Length < 1)
             {
-                player.Reply(_("UsageRemove", player.Id));
+                player.Reply(_("UsageRemove", player));
                 return;
             }
             var name = string.Join(" ", args);
             bool multipleMatches;
             var friend = FindPlayer(name, out multipleMatches);
             if (friend == null)
-                player.Reply(_("PlayerNotFound", player.Id));
+                player.Reply(_("PlayerNotFound", player));
             else if (multipleMatches)
-                player.Reply(_("MultipleMatches", player.Id));
+                player.Reply(_("MultipleMatches", player));
             else if (RemoveFriend(player.Id, friend.Id))
-                player.Reply(_("FriendRemoved", player.Id), friend.Name);
+                player.Reply(_("FriendRemoved", player), friend.Name);
             else
-                player.Reply(_("NotOnFriendlist", player.Id));
+                player.Reply(_("NotOnFriendlist", player));
         }
 
-        [Command("f")]
+        [Command("fm")]
         void cmdFriendChat(IPlayer player, string command, string[] args)
         {
             if (!configData.EnableFriendChat)
                 return;
             if (args.Length < 1)
             {
-                player.Reply(_("UsageFriendChat", player.Id));
+                player.Reply(_("UsageFriendChat", player));
                 return;
             }
             var message = string.Join(" ", args).Trim();
             if (message.Length == 0)
             {
-                player.Reply(_("UsageFriendChat", player.Id));
+                player.Reply(_("UsageFriendChat", player));
                 return;
             }
             PlayerData data;
             if (!playerData.TryGetValue(player.Id, out data) || data.Friends.Count == 0)
             {
-                player.Reply(_("NoFriends", player.Id));
+                player.Reply(_("NoFriends", player));
                 return;
             }
             int messagesSent = 0;
@@ -445,12 +453,64 @@ namespace Oxide.Plugins
                     PlayerData friendData;
                     if (!configData.LimitFriendChatToMutualFriends || (playerData.TryGetValue(friend.Id, out friendData) && friendData.Friends.Contains(player.Id)))
                     {
-                        friend.Message(player.Name + ": " + message);
+                        friend.Message(_("FriendChatReceived", friend), player.Name, message);
                         ++messagesSent;
                     }
                 }
             }
-            player.Reply(_("FriendChatSent", player.Id), messagesSent, message);
+            player.Reply(_("FriendChatSent", player), messagesSent, message);
+        }
+
+        readonly Regex leadingDoubleQuotedNameEx = new Regex("^\"(?:\\?.)*?\"", RegexOptions.Compiled);
+
+        [Command("pm")]
+        void cmdPrivateChat(IPlayer player, string command, string[] args)
+        {
+            if (!configData.EnablePrivateChat)
+                return;
+            var message = string.Join(" ", args).Trim();
+            if (message.Length == 0)
+            {
+                player.Reply(_("UsagePrivateChat", player));
+                return;
+            }
+            string name;
+            var match = leadingDoubleQuotedNameEx.Match(message);
+            if (match.Success)
+            {
+                name = message.Substring(match.Index + 1, match.Length - 2).Trim();
+                message = message.Substring(match.Index + match.Length).Trim();
+            }
+            else
+            {
+                var index = message.IndexOf(' ');
+                if (index < 0)
+                {
+                    player.Reply(_("UsagePrivateChat", player));
+                    return;
+                }
+                name = message.Substring(0, index);
+                message = message.Substring(index + 1);
+            }
+            if (name.Length == 0 || message.Length == 0)
+            {
+                player.Reply(_("UsagePrivateChat", player));
+                return;
+            }
+            bool multipleMatches;
+            var recipient = FindPlayer(name, out multipleMatches);
+            if (recipient == null || !recipient.IsConnected)
+            {
+                player.Reply(_("PlayerNotFound", player));
+                return;
+            }
+            else if (multipleMatches)
+            {
+                player.Reply(_("MultipleMatches", player));
+                return;
+            }
+            player.Message(_("PrivateChatSent", recipient), recipient.Name, message);
+            recipient.Message(_("PrivateChatReceived", recipient), player.Name, message);
         }
 
         #endregion
@@ -523,7 +583,7 @@ namespace Oxide.Plugins
             else
                 reverseData.Add(friend.Id, new HashSet<string>() { player.Id});
             if (configData.SendAddedNotification)
-                friend.Message(_("FriendAddedNotification", friend.Id), player.Name);
+                friend.Message(_("FriendAddedNotification", friend), player.Name);
             Interface.Oxide.NextTick(() => {
                 Interface.Oxide.CallHook("FriendAdded", player, friend);
             });
@@ -555,7 +615,7 @@ namespace Oxide.Plugins
                         reverseData.Remove(friend.Id);
                 }
                 if (configData.SendRemovedNotification)
-                    friend.Message(_("FriendRemovedNotification", friend.Id), player.Name);
+                    friend.Message(_("FriendRemovedNotification", friend), player.Name);
                 Interface.Oxide.NextTick(() => {
                     Interface.Oxide.CallHook("FriendRemoved", player, friend);
                 });

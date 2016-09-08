@@ -13,29 +13,41 @@ Features
 * Compatible with BattleLink / Rust:IO 3.X
 * Includes configurable friendly fire
 * Includes configurable door and turret sharing for Rust
+* Includes configurable friends and private chat
 
 Usage
 -----
 As a player, this is how you use the plugin:
 
-| Command                 | Description
-|-------------------------|-------------
-| /friends                | Displays your friends list and essential usage instructions
-| /addfriend *NAME...*    | Adds a player to your friends
-| /removefriend *NAME...* | Removes a player from your friends
+| Command                      | Description
+|------------------------------|-------------
+| /friends                     | Displays your friends list and essential usage instructions
+| /addfriend *NAME...*         | Adds a player to your friends
+| /removefriend *NAME...*      | Removes a player from your friends
+| /fm *MESSAGE...*             | Sends a message to all of your friends
+| /pm "*NAME...*" *MESSAGE...* | Sends a private message to the specified player
+
+You can also use the respective unique player id (i.e. Steam ID) instead of a player's name in case that there are multiple
+players using the same name.
+
+Also note that **/fm** and **/pm** may not be available if the server owner decided so, and if available, be aware that these
+messages can be trivially logged on the server even if there is no logging mechanism by default.
 
 Configuration
 -------------
 Once installed, the configuration file becomes available at `oxide/config/Friends.json`. To change your settings, simply edit the file and reload the plugin once afterwards.
 
-| Option                  | Default | Description
-|-------------------------|---------|-------------
-| MaxFriends              | 30      | Limits the number of friends a single player can add
-| DisableFriendlyFire     | false   | If `true`, disables friendly fire for friends if supported by the game
-| SendOnlineNotification  | true    | If `true`, sends a chat notification to each friend when a player connects
-| SendOfflineNotification | true    | If `true`, sends a chat notification to each friend when a player disconnects
-| SendAddedNotification   | true    | If `true`, sends a chat notification to the newly added friend
-| SendRemovedNotification | true    | If `true`, sends a chat notification to the removed friend
+| Option                         | Default | Description
+|--------------------------------|---------|-------------
+| MaxFriends                     | 30      | Limits the number of friends a single player can add
+| DisableFriendlyFire            | false   | If `true`, disables friendly fire for friends if supported by the game
+| EnableFriendChat               | false   | If `true`, enables friend chat through the **/fm** command.
+| LimitFriendChatToMutualFriends | true    | If `true`, limits friend chat to mutual friends.
+| EnablePrivateChat              | false   | If `true`, enables private messages through the **/pm** command.
+| SendOnlineNotification         | true    | If `true`, sends a chat notification to each friend when a player connects
+| SendOfflineNotification        | true    | If `true`, sends a chat notification to each friend when a player disconnects
+| SendAddedNotification          | true    | If `true`, sends a chat notification to the newly added friend
+| SendRemovedNotification        | true    | If `true`, sends a chat notification to the removed friend
 
 There are additional configuration options for specific games:
 
