@@ -71,7 +71,7 @@ The API is pretty much straight forward:
 | AddFriend(playerId:`object`, friendId:`object`):`bool`     | Adds *friend* to *player*'s friends list, by id.
 | RemoveFriend(playerId:`object`, friendId:`object`):`bool`  | Removes *friend* from *player*'s friends list, by id.
 | GetFriends(playerId:`object`):`object`                     | Gets an array of *player*'s friends, by id.
-| GetFriendsReverse(friendId:`object`):`object`              | Gets an array of *players who have added *friend* to their friends list, by id.
+| GetFriendsReverse(friendId:`object`):`object`              | Gets an array of players who have added *friend* to their friends list, by id.
 
 **Note** that all methods take arbitrary parameter types (i.e. `string`, `ulong` or `int`), which makes them independent
 of what the game being modded uses to represent player ids. **GetFriends** and **GetFriendsShared** in particular return an
