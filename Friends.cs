@@ -1,6 +1,6 @@
 ﻿#region License
 /*
- Copyright (c) 2016 dcode / BattleLink.io
+ Copyright (c) 2016 dcode [battlelink.io] and contributors
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -30,7 +30,7 @@ using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.0.0", ResourceId = 2120)]
+    [Info("Friends", "dcode [battlelink.io] and contributors", "2.0.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
@@ -166,7 +166,20 @@ namespace Oxide.Plugins
 
         void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
-        void saveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, friendsData);
+        Timer saveDataBatchedTimer = null;
+
+        // Collects all save calls within delay and saves once there are no more updates.
+        void saveData(float delay = 3.0f)
+        {
+            if (saveDataBatchedTimer == null)
+                saveDataBatchedTimer = timer.Once(delay, () => {
+                    saveDataBatchedTimer.DestroyToPool();
+                    saveDataBatchedTimer = null;
+                    Interface.Oxide.DataFileSystem.WriteObject(Name, friendsData);
+                });
+            else
+                saveDataBatchedTimer.Reset(delay);
+        }
 
         #endregion
 
@@ -289,6 +302,16 @@ namespace Oxide.Plugins
             }
         }
 
+        void Unload()
+        {
+            if (saveDataBatchedTimer != null)
+            {
+                saveDataBatchedTimer.DestroyToPool();
+                saveDataBatchedTimer = null;
+                Interface.Oxide.DataFileSystem.WriteObject(Name, friendsData);
+            }
+        }
+
         void OnUserConnected(IPlayer player)
         {
             // Update the player's remembered name if necessary
@@ -334,6 +357,11 @@ namespace Oxide.Plugins
         [Command("friends")]
         void cmdFriends(IPlayer player, string command, string[] args)
         {
+            if (player.Id == "server_console")
+            {
+                player.Reply("This command cannot be used from the server console.");
+                return;
+            }
             PlayerData data;
             int count;
             if (friendsData.TryGetValue(player.Id, out data) && (count = data.Friends.Count) > 0)
@@ -384,6 +412,11 @@ namespace Oxide.Plugins
         [Command("addfriend")]
         void cmdAddFriend(IPlayer player, string command, string[] args)
         {
+            /* if (player.Id == "server_console")
+            {
+                player.Reply("This command cannot be used from the server console.");
+                return;
+            } */
             if (args.Length < 1)
             {
                 player.Reply(_("UsageAdd", player));
@@ -419,6 +452,11 @@ namespace Oxide.Plugins
         [Command("removefriend", "deletefriend")]
         void cmdRemoveFriend(IPlayer player, string command, string[] args)
         {
+            if (player.Id == "server_console")
+            {
+                player.Reply("This command cannot be used from the server console.");
+                return;
+            }
             if (args.Length < 1)
             {
                 player.Reply(_("UsageRemove", player));
@@ -440,6 +478,11 @@ namespace Oxide.Plugins
         [Command("fm")]
         void cmdFriendChat(IPlayer player, string command, string[] args)
         {
+            if (player.Id == "server_console")
+            {
+                player.Reply("This command cannot be used from the server console.");
+                return;
+            }
             if (!configData.EnableFriendChat)
                 return;
             if (args.Length < 1)
@@ -481,6 +524,11 @@ namespace Oxide.Plugins
         [Command("pm")]
         void cmdPrivateChat(IPlayer player, string command, string[] args)
         {
+            if (player.Id == "server_console")
+            {
+                player.Reply("This command cannot be used from the server console.");
+                return;
+            }
             if (!configData.EnablePrivateChat)
                 return;
             var message = string.Join(" ", args).Trim();
@@ -541,7 +589,7 @@ namespace Oxide.Plugins
         // Returns the maximum number of friends allowed per player.
         int GetMaxFriends() => configData.MaxFriends;
 
-        // Returns the current or remembered name of player.
+        // Gets player's current or remembered name, by id.
         string GetPlayerName(object playerId)
         {
             if (ReferenceEquals(playerId, null))
@@ -555,7 +603,14 @@ namespace Oxide.Plugins
                     return data.Name;
             }
             else
+            {
+                if (!friendsData.ContainsKey(iplayer.Id))
+                {
+                    friendsData.Add(iplayer.Id, new PlayerData() { Name = iplayer.Name, Friends = new HashSet<string>() });
+                    saveData();
+                }
                 return iplayer.Name;
+            }
             return "#" + playerIdStr;
         }
 

@@ -65,6 +65,7 @@ The API is pretty much straight forward:
 | Method                                                     | Description
 |------------------------------------------------------------|-------------
 | GetMaxFriends():`int`                                      | Gets the maximum number of friends allowed per player.
+| GetPlayerName(playerId:`object`):`string`                  | Gets player's current or remembered name, by id.
 | HasFriend(playerId:`object`, friendId:`object`):`bool`     | Tests if player added friend to their friends list, by id.
 | AreFriends(playerId:`object`, friendId:`object`):`bool`    | Tests if player and friend are mutual friends, by id.
 | AddFriend(playerId:`object`, friendId:`object`):`bool`     | Adds friend to player's friends list, by id.
