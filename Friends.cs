@@ -45,7 +45,7 @@ namespace Oxide.Plugins
             public bool SendOnlineNotification = true;
             public bool SendOfflineNotification = true;
             public bool SendAddedNotification = true;
-            public bool SendRemovedNotification = true;
+            public bool SendRemovedNotification = false;
 #if RUST
             public RustConfigData Rust = new RustConfigData();
 #endif
@@ -80,9 +80,10 @@ namespace Oxide.Plugins
                 { "AlreadyAFriend", "{0} is already one of your friends." },
                 { "CantAddSelf", "You cannot add yourself to your friends." },
                 { "NoFriends", "You haven't added any friends, yet." },
-                { "List", "You have {0} friends:" },
+                { "List", "You have {0} friends ({1} max.):" },
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
+                { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
 
                 // Chat notifications
                 { "FriendAddedNotification", "{0} added you as a friend." },
@@ -92,7 +93,7 @@ namespace Oxide.Plugins
             
                 // Usage text
                 { "UsageAdd", "Use /addfriend NAME... to add a friend" },
-                { "UsageRemove", "Use /removefriend NAME... to remove one" },
+                { "UsageRemove", "Use /removefriend NAME... to remove a friend" },
                 { "HelpText", "Type /friends to manage your friends" }
 
             }, this, "en");
@@ -108,9 +109,10 @@ namespace Oxide.Plugins
                 { "AlreadyAFriend", "{0} ist bereits dein Freund." },
                 { "CantAddSelf", "Du kannst dich nicht selbst als Freund hinzufügen." },
                 { "NoFriends", "Du hast noch keine Freunde hinzugefügt." },
-                { "List", "Du hast {0} von maximal {1} Freunden:" },
+                { "List", "Du hast {0} Freunde (max. {1}):" },
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
+                { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entwerder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
 
                 // Chat notifications
                 { "FriendAddedNotification", "{0} hat dich als Freund hinzugefügt." },
@@ -144,6 +146,101 @@ namespace Oxide.Plugins
         void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
         void saveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, playerData);
+
+        #endregion
+
+        #region Helpers
+
+        static readonly string[] emptyStringArray = new string[0];
+
+        static readonly IDictionary<Type, Array> emptyTypedArrays = new Dictionary<Type, Array>() { };
+
+        static Type stringType = typeof(string);
+
+        static Array makeEmptyTypedArray(Type type)
+        {
+#if DEBUG
+            if (type == stringType)
+                throw new ArgumentException("the string type should never be added", "type");
+#endif
+            Array emptyArray;
+            if (emptyTypedArrays.TryGetValue(type, out emptyArray))
+                return emptyArray;
+            emptyTypedArrays.Add(type, emptyArray = Array.CreateInstance(type, 0));
+            return emptyArray;
+        }
+
+        static Array makeTypedArray(Type type, ICollection<string> stringCollection)
+        {
+            var size = stringCollection.Count;
+            if (size == 0)
+                return makeEmptyTypedArray(type);
+            var array = Array.CreateInstance(type, size);
+            var index = 0;
+            foreach (var value in stringCollection)
+                array.SetValue(Convert.ChangeType(value, type), index++);
+            return array;
+        }
+
+        string GetPlayerName(object playerId)
+        {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
+            var playerIdStr = playerId.ToString();
+            var iplayer = covalence.Players.GetPlayer(playerIdStr);
+            if (iplayer == null)
+            {
+                PlayerData data;
+                if (playerData.TryGetValue(playerIdStr, out data))
+                    return data.Name;
+            }
+            else
+                return iplayer.Name;
+            return "#" + playerIdStr;
+        }
+
+        IPlayer FindPlayer(string nameOrId, out bool multipleMatches)
+        {
+            multipleMatches = false;
+            var players = covalence.Players.GetAllPlayers();
+            IPlayer found = null;
+
+            // First pass: Check for unique player id
+            foreach (var player in players)
+                if (player.Id == nameOrId)
+                    return player;
+
+            // Second pass: Check for exact name
+            foreach (var player in players)
+            {
+                if (player.Name == nameOrId)
+                {
+                    if (found != null)
+                    {
+                        multipleMatches = true;
+                        return found;
+                    }
+                    found = player;
+                }
+            }
+            if (found != null)
+                return found;
+
+            // Third pass: Check for partial name
+            foreach (var player in players)
+            {
+                if (player.Name.Contains(nameOrId))
+                {
+                    if (found != null)
+                    {
+                        multipleMatches = true;
+                        return found;
+                    }
+                    found = player;
+                }
+            }
+            return found;
+        }
 
         #endregion
 
@@ -207,17 +304,16 @@ namespace Oxide.Plugins
                 }
         }
 
-        // Reusable collections meant to reduce allocations / garbage
-        readonly List<string> onlineList = new List<string>(30);
-        readonly List<string> offlineList = new List<string>(30);
-
         [Command("friends")]
         void cmdFriends(IPlayer player, string command, string[] args)
         {
             PlayerData data;
-            if (playerData.TryGetValue(player.Id, out data) && data.Friends.Count > 0)
+            int count;
+            if (playerData.TryGetValue(player.Id, out data) && (count = data.Friends.Count) > 0)
             {
-                player.Reply(_("List", player.Id));
+                List<string> onlineList = new List<string>(configData.MaxFriends);
+                List<string> offlineList = new List<string>(configData.MaxFriends);
+                player.Reply(_("List", player.Id), count, configData.MaxFriends);
                 foreach (var friendId in data.Friends)
                 {
                     // Sort friends by online status and name (must be mutual friends to show online status)
@@ -262,20 +358,26 @@ namespace Oxide.Plugins
                 player.Reply(_("UsageAdd", player.Id));
                 return;
             }
-            var name = string.Join(" ", args);
-            var friend = covalence.Players.FindPlayer(name);
+            var nameOrId = string.Join(" ", args);
+            bool multipleMatches;
+            var friend = FindPlayer(nameOrId, out multipleMatches);
             if (friend == null)
             {
-                player.Reply(_("NoSuchPlayer", player.Id));
+                player.Reply(_("PlayerNotFound", player.Id));
                 return;
             }
-            if (friend == player)
+            else if (multipleMatches)
+            {
+                player.Reply(_("MultipleMatches", player.Id));
+                return;
+            }
+            if (friend.Id == player.Id)
             {
                 player.Reply(_("CantAddSelf", player.Id));
                 return;
             }
             PlayerData data;
-            if (configData.MaxFriends < 1 || playerData.TryGetValue(player.Id, out data) && data.Friends.Count >= configData.MaxFriends)
+            if (configData.MaxFriends < 1 || (playerData.TryGetValue(player.Id, out data) && data.Friends.Count >= configData.MaxFriends))
                 player.Reply(_("FriendlistFull", player.Id));
             else if (AddFriend(player.Id, friend.Id))
                 player.Reply(_("FriendAdded", player.Id), friend.Name);
@@ -292,65 +394,16 @@ namespace Oxide.Plugins
                 return;
             }
             var name = string.Join(" ", args);
-            var friend = covalence.Players.FindPlayer(name);
+            bool multipleMatches;
+            var friend = FindPlayer(name, out multipleMatches);
             if (friend == null)
-                player.Reply(_("NoSuchPlayer", player.Id));
+                player.Reply(_("PlayerNotFound", player.Id));
+            else if (multipleMatches)
+                player.Reply(_("MultipleMatches", player.Id));
             else if (RemoveFriend(player.Id, friend.Id))
                 player.Reply(_("FriendRemoved", player.Id), friend.Name);
             else
-                player.Reply(_("NoSuchFriend", player.Id));
-        }
-
-        #endregion
-
-        #region API helpers
-
-        static readonly string[] emptyStringArray = new string[0];
-
-        static readonly IDictionary<Type, Array> emptyTypedArrays = new Dictionary<Type, Array>() { };
-
-        static Type stringType = typeof(string);
-
-        static Array makeEmptyTypedArray(Type type)
-        {
-#if DEBUG
-            if (type == stringType)
-                throw new ArgumentException("the string type should never be added", "type");
-#endif
-            Array emptyArray;
-            if (emptyTypedArrays.TryGetValue(type, out emptyArray))
-                return emptyArray;
-            emptyTypedArrays.Add(type, emptyArray = Array.CreateInstance(type, 0));
-            return emptyArray;
-        }
-
-        static Array makeTypedArray(Type type, ICollection<string> stringCollection)
-        {
-            var size = stringCollection.Count;
-            if (size == 0)
-                return makeEmptyTypedArray(type);
-            var array = Array.CreateInstance(type, size);
-            var index = 0;
-            foreach (var value in stringCollection)
-                array.SetValue(Convert.ChangeType(value, type), index++);
-            return array;
-        }
-
-        string GetPlayerName(object playerId)
-        {
-            if (ReferenceEquals(playerId, null))
-                throw new ArgumentNullException("playerId");
-            var playerIdStr = playerId.ToString();
-            var iplayer = covalence.Players.GetPlayer(playerIdStr);
-            if (iplayer == null)
-            {
-                PlayerData data;
-                if (playerData.TryGetValue(playerIdStr, out data))
-                    return data.Name;
-            }
-            else
-                return iplayer.Name;
-            return "#" + playerIdStr;
+                player.Reply(_("NotOnFriendlist", player.Id));
         }
 
         #endregion
@@ -409,9 +462,8 @@ namespace Oxide.Plugins
             PlayerData data;
             if (playerData.TryGetValue(player.Id, out data))
             {
-                if (data.Friends.Count >= configData.MaxFriends)
+                if (data.Friends.Count >= configData.MaxFriends || !data.Friends.Add(friend.Id))
                     return false;
-                data.Friends.Add(friend.Id);
             }
             else
                 data = playerData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
