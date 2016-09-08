@@ -40,7 +40,7 @@ namespace Oxide.Plugins
         {
             // DO NOT EDIT! These are the defaults. Edit oxide/config/Friends.json instead!
 
-            public int MaxFriends = 30;
+            public int  MaxFriends = 30;
             public bool DisableFriendlyFire = false;
 
             public bool EnableFriendChat = false;
@@ -551,11 +551,11 @@ namespace Oxide.Plugins
                 throw new ArgumentNullException("friendId");
             var playerIdStr = playerId.ToString();
             var friendIdStr = friendId.ToString();
-            PlayerData pData, fData;
-            return friendsData.TryGetValue(playerIdStr, out pData)
-                && friendsData.TryGetValue(friendIdStr, out fData)
-                && pData.Friends.Contains(friendIdStr)
-                && fData.Friends.Contains(playerIdStr);
+            PlayerData playerData, friendData;
+            return friendsData.TryGetValue(playerIdStr, out playerData)
+                && friendsData.TryGetValue(friendIdStr, out friendData)
+                && playerData.Friends.Contains(friendIdStr)
+                && friendData.Friends.Contains(playerIdStr);
         }
 
         // Adds friend to player's friends list, by id.

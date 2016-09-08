@@ -47,7 +47,7 @@ Once installed, the configuration file becomes available at `oxide/config/Friend
 | SendOnlineNotification         | true    | If `true`, sends a chat notification to each friend when a player connects
 | SendOfflineNotification        | true    | If `true`, sends a chat notification to each friend when a player disconnects
 | SendAddedNotification          | true    | If `true`, sends a chat notification to the newly added friend
-| SendRemovedNotification        | true    | If `true`, sends a chat notification to the removed friend
+| SendRemovedNotification        | false   | If `true`, sends a chat notification to the removed friend
 
 There are additional configuration options for specific games:
 
