@@ -31,7 +31,7 @@ You can also use the respective unique player id (i.e. Steam ID) instead of a pl
 players using the same name.
 
 Also note that **/fm** and **/pm** may not be available if the server owner decided so, and if available, be aware that these
-messages can be trivially logged on the server even if there is no logging mechanism by default.
+messages can trivially be logged on the server even if there is no logging mechanism by default.
 
 Configuration
 -------------
@@ -64,6 +64,7 @@ The API is pretty much straight forward:
 
 | Method                                                     | Description
 |------------------------------------------------------------|-------------
+| GetMaxFriends():`int`                                      | Gets the maximum number of friends allowed per player.
 | HasFriend(playerId:`object`, friendId:`object`):`bool`     | Tests if player added friend to their friends list, by id.
 | AreFriends(playerId:`object`, friendId:`object`):`bool`    | Tests if player and friend are mutual friends, by id.
 | AddFriend(playerId:`object`, friendId:`object`):`bool`     | Adds friend to player's friends list, by id.

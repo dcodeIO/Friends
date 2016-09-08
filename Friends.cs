@@ -30,15 +30,14 @@ using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "3.0.0", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.0.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
         #region Config
 
         class ConfigData
-        {
-            // DO NOT EDIT! These are the defaults. Edit oxide/config/Friends.json instead!
+        {// Do not edit! These are the defaults. Edit oxide/config/Friends.json instead!
 
             public int  MaxFriends = 30;
             public bool DisableFriendlyFire = false;
@@ -123,7 +122,7 @@ namespace Oxide.Plugins
                 { "List", "Du hast {0} Freunde (max. {1}):" },
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
-                { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entwerder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
+                { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entweder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
                 { "FriendChatSent", "An {0} Freunde gesendet: {1}" },
                 { "FriendChatReceived", "[Freundes-Chat] {0}: {1}" },
                 { "PrivateChatSent", "Gesendet an {0}: {1}" },
@@ -147,12 +146,17 @@ namespace Oxide.Plugins
         }
 
         string _(string key, IPlayer recipient) => lang.GetMessage(key, this, recipient.Id);
+        string _(string key, string recipientId) => lang.GetMessage(key, this, recipientId);
 
         #endregion
 
         #region Persistence
 
-        class PlayerData { public string Name; public HashSet<string> Friends; }
+        class PlayerData
+        {
+            public string Name;
+            public HashSet<string> Friends;
+        }
 
         Dictionary<string, PlayerData> friendsData;
 
@@ -168,11 +172,11 @@ namespace Oxide.Plugins
 
         #region Helpers
 
-        static readonly string[] emptyStringArray = new string[0];
+        readonly static string[] emptyStringArray = new string[0];
 
-        static readonly IDictionary<Type, Array> emptyTypedArrays = new Dictionary<Type, Array>() { };
+        readonly static IDictionary<Type, Array> emptyTypedArrays = new Dictionary<Type, Array>() { };
 
-        static Type stringType = typeof(string);
+        readonly static Type stringType = typeof(string);
 
         static Array makeEmptyTypedArray(Type type)
         {
@@ -197,23 +201,6 @@ namespace Oxide.Plugins
             foreach (var value in stringCollection)
                 array.SetValue(Convert.ChangeType(value, type), index++);
             return array;
-        }
-
-        string GetPlayerName(object playerId)
-        {
-            if (ReferenceEquals(playerId, null))
-                throw new ArgumentNullException("playerId");
-            var playerIdStr = playerId.ToString();
-            var iplayer = covalence.Players.GetPlayer(playerIdStr);
-            if (iplayer == null)
-            {
-                PlayerData data;
-                if (friendsData.TryGetValue(playerIdStr, out data))
-                    return data.Name;
-            }
-            else
-                return iplayer.Name;
-            return "#" + playerIdStr;
         }
 
         IPlayer FindPlayer(string nameOrId, out bool multipleMatches)
@@ -292,20 +279,28 @@ namespace Oxide.Plugins
             // Update the player's remembered name if necessary
             PlayerData data;
             if (friendsData.TryGetValue(player.Id, out data))
+            {
                 if (player.Name != data.Name)
                 {
                     data.Name = player.Name;
                     saveData();
                 }
-
-            // Send online notifications if enabled
-            if (configData.SendOnlineNotification && data != null)
-                foreach (var friendId in data.Friends)
+                // Send online notifications if enabled
+                if (configData.SendOnlineNotification && data != null)
                 {
-                    var friend = covalence.Players.GetPlayer(friendId);
-                    if (friend != null && friend.IsConnected)
-                        friend.Message(_("FriendOnlineNotification", friend), player.Name);
+                    foreach (var friendId in data.Friends)
+                    {
+                        var friend = covalence.Players.GetPlayer(friendId);
+                        if (friend != null && friend.IsConnected)
+                            friend.Message(_("FriendOnlineNotification", friend), player.Name);
+                    }
                 }
+            }
+            else
+            {
+                friendsData.Add(player.Id, new PlayerData() { Name = player.Name, Friends = new HashSet<string>() });
+                saveData();
+            }
         }
 
         void OnUserDisconnected(IPlayer player)
@@ -354,7 +349,7 @@ namespace Oxide.Plugins
                 onlineList.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
                 var onlineText = _("ListOnline", player);
                 foreach (var friendName in onlineList)
-                    player.Message(onlineText + " " + friendName);
+                    player.Message(friendName + " " + onlineText);
                 onlineList.Clear();
                 offlineList.Sort((a, b) => string.Compare(a, b, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var friendName in offlineList)
@@ -531,6 +526,24 @@ namespace Oxide.Plugins
         // Returns the maximum number of friends allowed per player.
         int GetMaxFriends() => configData.MaxFriends;
 
+        // Returns the current or remembered name of player.
+        string GetPlayerName(object playerId)
+        {
+            if (ReferenceEquals(playerId, null))
+                throw new ArgumentNullException("playerId");
+            var playerIdStr = playerId.ToString();
+            var iplayer = covalence.Players.GetPlayer(playerIdStr);
+            if (iplayer == null)
+            {
+                PlayerData data;
+                if (friendsData.TryGetValue(playerIdStr, out data))
+                    return data.Name;
+            }
+            else
+                return iplayer.Name;
+            return "#" + playerIdStr;
+        }
+
         // Tests if player added friend to their friends list, by id.
         bool HasFriend(object playerId, object friendId)
         {
@@ -688,30 +701,41 @@ namespace Oxide.Plugins
         #region Game-specific: Rust
 
 #if RUST
+        // Hook called by HelpText and similar.
         void SendHelpText(BasePlayer player) => player.ChatMessage(_("HelpText", player.userID.ToString()));
 
+        // Cancels targeting if ShareAutoTurrets is enabled and target is a friend of the turret's owner.
         object OnTurretTarget(AutoTurret turret, BaseCombatEntity target)
         {
             BasePlayer player;
-            return configData.Rust.ShareAutoTurrets && (player = (target as BasePlayer)) != null && HasFriend(turret.OwnerID.ToString(), player.userID.ToString())
-                ? @false // cancel targeting if ShareAutoTurrets is enabled and target is a friend of the turret's owner
-                : null;  // otherwise use default behaviour
+            return configData.Rust.ShareAutoTurrets
+                && (player = (target as BasePlayer)) != null
+                && HasFriend(turret.OwnerID, player.userID)
+                ? @false
+                : null;
         }
 
+        // Cancels attack if DisableFriendlyFire is enabled and victim is a friend of the attacker.
         object OnPlayerAttack(BasePlayer attacker, HitInfo hit)
         {
             BasePlayer victim;
-            return configData.DisableFriendlyFire && (victim = (hit.HitEntity as BasePlayer)) != null && attacker != victim && HasFriend(attacker.userID.ToString(), victim.userID.ToString())
-                ? @false // cancel attack if DisableFriendlyFire is enabled and victim is a friend of the attacker
-                : null;  // otherwise use default behaviour
+            return configData.DisableFriendlyFire
+                && (victim = (hit.HitEntity as BasePlayer)) != null
+                && attacker != victim
+                && HasFriend(attacker.userID, victim.userID)
+                ? @false
+                : null;
         }
 
+        // Allows door usage if ShareCodeLocks is enabled and player is a friend of the door's owner.
         object CanUseDoor(BasePlayer player, CodeLock codeLock)
         {
             ulong ownerId;
-            return configData.Rust.ShareCodeLocks && (ownerId = codeLock.GetParentEntity().OwnerID) > 0 && HasFriend(ownerId.ToString(), player.userID.ToString())
-                ? @true  // allow door usage if ShareCodeLocks is enabled and player is a friend of the door's owner
-                : null;  // otherwise use default behaviour
+            return configData.Rust.ShareCodeLocks
+                && (ownerId = codeLock.GetParentEntity().OwnerID) > 0
+                && HasFriend(ownerId.ToString(), player.userID.ToString())
+                ? @true
+                : null;
         }
 #endif
 
