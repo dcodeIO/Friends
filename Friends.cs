@@ -412,11 +412,11 @@ namespace Oxide.Plugins
         [Command("addfriend")]
         void cmdAddFriend(IPlayer player, string command, string[] args)
         {
-            /* if (player.Id == "server_console")
+            if (player.Id == "server_console")
             {
                 player.Reply("This command cannot be used from the server console.");
                 return;
-            } */
+            } 
             if (args.Length < 1)
             {
                 player.Reply(_("UsageAdd", player));
