@@ -263,15 +263,30 @@ namespace Oxide.Plugins
             if (friendsData == null)
                 friendsData = new Dictionary<string, PlayerData>();
             else
-                foreach (var kv in friendsData)
-                    foreach (var friendId in kv.Value.Friends)
+            {
+                foreach (var playerId in friendsData.Keys.ToArray())
+                {
+                    var playerData = friendsData[playerId];
+
+                    // To be sure, in case the data file has been edited manually:
+                    if (playerData == null || playerData.Name == null || playerData.Friends == null)
+                    {
+                        PrintWarning("Skipping invalid PlayerData record #{0}", playerId);
+                        friendsData.Remove(playerId);
+                        continue;
+                    }
+
+                    // Rebuild reverse friends
+                    foreach (var friendId in playerData.Friends)
                     {
                         HashSet<string> reverseFriendData;
                         if (reverseFriendsData.TryGetValue(friendId, out reverseFriendData))
-                            reverseFriendData.Add(kv.Key);
+                            reverseFriendData.Add(playerId);
                         else
-                            reverseFriendsData.Add(friendId, new HashSet<string>() { kv.Key });
+                            reverseFriendsData.Add(friendId, new HashSet<string>() { playerId });
                     }
+                }
+            }
         }
 
         void OnUserConnected(IPlayer player)
@@ -286,7 +301,7 @@ namespace Oxide.Plugins
                     saveData();
                 }
                 // Send online notifications if enabled
-                if (configData.SendOnlineNotification && data != null)
+                if (configData.SendOnlineNotification)
                 {
                     foreach (var friendId in data.Friends)
                     {
