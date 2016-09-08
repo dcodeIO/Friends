@@ -70,7 +70,7 @@ Every API method that accepts one or more player ids also has a generic override
 | GetFriends        | GetFriends&lt;`T`&gt;(playerId:`T`):`T[]`
 | GetFriendsReverse | GetFriendsReverse&lt;`T`&gt;(friendId:`T`):`T[]` 
 
-Other methods declared within the source file that utilizy generic methods exist for compatibility purposes only and should not be used in new projects.
+Other methods declared within the source file that utilize generic methods exist for compatibility purposes only and should not be used in new projects.
 
 Additionally, the plugin emits its own hooks:
 
