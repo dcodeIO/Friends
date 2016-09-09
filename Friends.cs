@@ -86,7 +86,7 @@ namespace Oxide.Plugins
                 { "AlreadyAFriend", "{0} is already one of your friends." },
                 { "CantAddSelf", "You cannot add yourself to your friends." },
                 { "NoFriends", "You haven't added any friends, yet." },
-                { "List", "You have {0} friends {1} max.):" },
+                { "List", "You have {0} friends ({1} max.):" },
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
                 { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
@@ -281,7 +281,7 @@ namespace Oxide.Plugins
             if (color > -1)
                 return "<color=#" + rgbToHex(color) + ">" + text + "</color>";
             if (bold)
-                return "<b><color=#" + rgbToHex(color) + ">" + text + "</color></b>";
+                return "<b>" + text + "</b>";
 #endif
             return text;
         }
@@ -480,12 +480,22 @@ namespace Oxide.Plugins
                 player.Reply("This command cannot be used from the server console.");
                 return;
             }
-            if (args.Length != 1 || args[0] != "IAMSURE")
+            if (args.Length < 1)
             {
                 player.Reply(_("UsageRemove", player));
                 return;
             }
-
+            var name = string.Join(" ", args);
+            bool multipleMatches;
+            var friend = findPlayer(name, out multipleMatches);
+            if (friend == null)
+                player.Reply(_("PlayerNotFound", player));
+            else if (multipleMatches)
+                player.Reply(_("MultipleMatches", player));
+            else if (RemoveFriend(player.Id, friend.Id))
+                player.Reply(_("FriendRemoved", player), friend.Name);
+            else
+                player.Reply(_("NotOnFriendlist", player));
         }
 
         [Command("fm")]
