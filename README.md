@@ -62,16 +62,16 @@ API
 ---
 The API is pretty much straight forward:
 
-| Method                                                        | Description
-|---------------------------------------------------------------|-------------
-| GetMaxFriends():`int`                                         | Gets the maximum number of friends allowed per player.
-| GetPlayerName(*playerId*:`object`):`string`                   | Gets *player*'s current or remembered name, by id.
-| HasFriend(*playerId*:`object`, *friendId*:`object`):`bool`    | Tests if *player* added *friend* to their friends list, by id.
-| AreFriends(*playerId*:`object`, *friendId*:`object`):`bool`   | Tests if *player* and *friend* are mutual friends, by id.
-| AddFriend(*playerId*:`object`, *friendId*:`object`):`bool`    | Adds *friend* to *player*'s friends list, by id.
-| RemoveFriend(*playerId*:`object`, *friendId*:`object`):`bool` | Removes *friend* from *player*'s friends list, by id.
-| GetFriends(*playerId*:`object`):`object`                      | Gets an array of *player*'s friends, by id.
-| GetFriendsReverse(*playerId*:`object`):`object`               | Gets an array of players who have added *player* to their friends list, by id.
+| Method                                                            | Description
+|-------------------------------------------------------------------|-------------
+| GetMaxFriends():`int`                                             | Gets the maximum number of friends allowed per player.
+| GetPlayerName(**playerId**:`object`):`string`                     | Gets **player**'s current or remembered name, by id.
+| HasFriend(**playerId**:`object`, **friendId**:`object`):`bool`    | Tests if **player** added **friend** to their friends list, by id.
+| AreFriends(**playerId**:`object`, **friendId**:`object`):`bool`   | Tests if **player** and **friend** are mutual friends, by id.
+| AddFriend(**playerId**:`object`, **friendId**:`object`):`bool`    | Adds **friend** to **player**'s friends list, by id.
+| RemoveFriend(**playerId**:`object`, **friendId**:`object`):`bool` | Removes **friend** from **player**'s friends list, by id.
+| GetFriends(**playerId**:`object`):`object`                        | Gets an array of **player**'s friends, by id.
+| GetFriendsReverse(**playerId**:`object`):`object`                 | Gets an array of players who have added **player** to their friends list, by id.
 
 **Note** that all methods take arbitrary parameter types (i.e. `string`, `ulong` or `int`), which makes them independent
 of what the game being modded uses to represent player ids. **GetFriends** and **GetFriendsReverse** in particular return an
@@ -81,10 +81,10 @@ Other methods declared within the source file exist for compatibility purposes o
 
 Additionally, the plugin emits its own hooks:
 
-| Hook                                                      | Description
-|-----------------------------------------------------------|-------------
-| OnFriendAdded(*playerId*:`string`, *friendId*:`string`)   | Called when *player* adds *friend* to their friends list, by id.
-| OnFriendRemoved(*playerId*:`string`, *friendId*:`string`) | Called when *player* removes *friend* from their friends list, by id.
+| Hook                                                          | Description
+|---------------------------------------------------------------|-------------
+| OnFriendAdded(**playerId**:`string`, **friendId**:`string`)   | Called when **player** adds **friend** to their friends list, by id.
+| OnFriendRemoved(**playerId**:`string`, **friendId**:`string`) | Called when **player* removes **friend** from their friends list, by id.
 
 #### Example
 
