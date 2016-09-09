@@ -1,1 +1,5 @@
-﻿raw/
+﻿bin/
+obj/
+Properties/
+raw/
+*.csproj

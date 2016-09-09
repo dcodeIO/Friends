@@ -665,7 +665,7 @@ namespace Oxide.Plugins
             if (OnFriendAddedInternal != null)
                 OnFriendAddedInternal(player.Id, friend.Id);
             Interface.Oxide.NextTick(() => {
-                Interface.Oxide.CallHook("FriendAdded", player, friend);
+                Interface.Oxide.CallHook("OnFriendAdded", player, friend);
             });
             return true;
         }
@@ -694,7 +694,7 @@ namespace Oxide.Plugins
                 if (OnFriendRemovedInternal != null)
                     OnFriendRemovedInternal(player.Id, friend.Id);
                 Interface.Oxide.NextTick(() => {
-                    Interface.Oxide.CallHook("FriendRemoved", player, friend);
+                    Interface.Oxide.CallHook("OnFriendRemoved", player, friend);
                 });
                 return true;
             }
