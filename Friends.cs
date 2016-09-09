@@ -581,8 +581,8 @@ namespace Oxide.Plugins
 
         /* interface IBattleLinkFriends
         {
-            event    Action<IPlayer, IPlayer>  OnFriendAddedInternal;
-            event    Action<IPlayer, IPlayer>  OnFriendRemovedInternal;
+            event    Action<string, string>    OnFriendAddedInternal;
+            event    Action<string, string>    OnFriendRemovedInternal;
 
             int      GetMaxFriendsInternal     (                                );
             string   GetPlayerNameInternal     (string playerId                 );
@@ -594,9 +594,9 @@ namespace Oxide.Plugins
             string[] GetFriendsReverseInternal (string playerId                 );
         } */
 
-        public event Action<IPlayer, IPlayer> OnFriendAddedInternal;
+        public event Action<string, string> OnFriendAddedInternal;
 
-        public event Action<IPlayer, IPlayer> OnFriendRemovedInternal;
+        public event Action<string, string> OnFriendRemovedInternal;
 
         public int GetMaxFriendsInternal() => configData.MaxFriends;
 
