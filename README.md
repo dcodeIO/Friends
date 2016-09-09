@@ -1,4 +1,6 @@
-﻿Friends
+﻿[license]: https://tldrlegal.com/l/mit
+
+Friends [![License](http://img.shields.io/badge/license-MIT-lightgrey.svg?style=flat)][License]
 =======
 Universal friends plugin for the [Oxide modding framework](https://github.com/OxideMod).
 
