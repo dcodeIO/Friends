@@ -663,7 +663,7 @@ namespace Oxide.Plugins
             if (configData.SendAddedNotification)
                 friend.Message(_("FriendAddedNotification", friend), player.Name);
             if (OnFriendAddedInternal != null)
-                OnFriendAddedInternal(player, friend);
+                OnFriendAddedInternal(player.Id, friend.Id);
             Interface.Oxide.NextTick(() => {
                 Interface.Oxide.CallHook("FriendAdded", player, friend);
             });
@@ -692,7 +692,7 @@ namespace Oxide.Plugins
                 if (configData.SendRemovedNotification)
                     friend.Message(_("FriendRemovedNotification", friend), player.Name);
                 if (OnFriendRemovedInternal != null)
-                    OnFriendRemovedInternal(player, friend);
+                    OnFriendRemovedInternal(player.Id, friend.Id);
                 Interface.Oxide.NextTick(() => {
                     Interface.Oxide.CallHook("FriendRemoved", player, friend);
                 });
