@@ -2,7 +2,7 @@
 
 Friends [![License](http://img.shields.io/badge/license-MIT-lightgrey.svg?style=flat)][License]
 =======
-Universal friends plugin for the [Oxide modding framework](https://github.com/OxideMod).
+[Universal friends plugin](http://oxidemod.org/plugins/friends.2120/) for the [Oxide modding framework](https://github.com/OxideMod).
 
 Features
 --------
