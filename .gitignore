@@ -1,5 +1,4 @@
-﻿bin/
-obj/
-Properties/
-raw/
-*.csproj
+﻿*
+!Friends.cs
+!LICENSE
+!README.md
