@@ -83,8 +83,8 @@ Additionally, the plugin emits its own hooks:
 
 | Hook                                                | Description
 |-----------------------------------------------------|-------------
-| OnFriendAdded(player:`IPlayer`, friend:`IPlayer`)   | Called when player adds friend to their friends list
-| OnFriendRemoved(player:`IPlayer`, friend:`IPlayer`) | Called when player removes friend from their friends list
+| OnFriendAdded(player:`string`, friend:`string`)     | Called when *player* adds *friend* to their friends list, by id.
+| OnFriendRemoved(player:`string`, friend:`string`)   | Called when *player* removes *friend* from their friends list, by id.
 
 #### Example
 

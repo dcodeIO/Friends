@@ -29,7 +29,7 @@ using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.0.1", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.1.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
@@ -583,15 +583,14 @@ namespace Oxide.Plugins
         {
             event    Action<string, string>    OnFriendAddedInternal;
             event    Action<string, string>    OnFriendRemovedInternal;
-
-            int      GetMaxFriendsInternal     (                                );
-            string   GetPlayerNameInternal     (string playerId                 );
+            int      GetMaxFriendsInternal     ();
+            string   GetPlayerNameInternal     (string playerId);
             bool     HasFriendInternal         (string playerId, string friendId);
             bool     AreFriendsInternal        (string playerId, string friendId);
             bool     AddFriendInternal         (string playerId, string friendId);
             bool     RemoveFriendInternal      (string playerId, string friendId);
-            string[] GetFriendsInternal        (string playerId                 );
-            string[] GetFriendsReverseInternal (string playerId                 );
+            string[] GetFriendsInternal        (string playerId);
+            string[] GetFriendsReverseInternal (string playerId);
         } */
 
         public event Action<string, string> OnFriendAddedInternal;
@@ -641,31 +640,38 @@ namespace Oxide.Plugins
             var player = covalence.Players.GetPlayer(playerId);
             if (player == null)
                 return false;
-            var friend = covalence.Players.GetPlayer(friendId);
-            if (friend == null)
-                return false;
-            PlayerData data;
-            if (friendsData.TryGetValue(player.Id, out data))
+            string friendName = null;
+            var friendOrNull = covalence.Players.GetPlayer(friendId);
+            if (friendOrNull == null)
             {
-                if (data.Friends.Count >= configData.MaxFriends || !data.Friends.Add(friend.Id))
+                friendName = GetPlayerNameInternal(friendId);
+                if (friendName == null)
                     return false;
             }
             else
-                data = friendsData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friend.Id } };
-            if (!friendsData.TryGetValue(friend.Id, out data)) // also add a blank reverse entry remembering the friend's name
-                friendsData[friend.Id] = new PlayerData() { Name = friend.Name, Friends = new HashSet<string>() };
+                friendName = friendOrNull.Name;
+            PlayerData data;
+            if (friendsData.TryGetValue(player.Id, out data))
+            {
+                if (data.Friends.Count >= configData.MaxFriends || !data.Friends.Add(friendId))
+                    return false;
+            }
+            else
+                data = friendsData[player.Id] = new PlayerData() { Name = player.Name, Friends = new HashSet<string>() { friendId } };
+            if (!friendsData.TryGetValue(friendId, out data)) // also add a blank reverse entry remembering the friend's name
+                friendsData[friendId] = new PlayerData() { Name = friendName, Friends = new HashSet<string>() };
             saveData();
             HashSet<string> reverseFriendData;
-            if (reverseFriendsData.TryGetValue(friend.Id, out reverseFriendData))
+            if (reverseFriendsData.TryGetValue(friendId, out reverseFriendData))
                 reverseFriendData.Add(player.Id);
             else
-                reverseFriendsData.Add(friend.Id, new HashSet<string>() { player.Id });
-            if (configData.SendAddedNotification)
-                friend.Message(_("FriendAddedNotification", friend), player.Name);
+                reverseFriendsData.Add(friendId, new HashSet<string>() { player.Id });
+            if (configData.SendAddedNotification && friendOrNull != null && friendOrNull.IsConnected)
+                friendOrNull.Message(_("FriendAddedNotification", friendOrNull), player.Name);
             if (OnFriendAddedInternal != null)
-                OnFriendAddedInternal(player.Id, friend.Id);
+                OnFriendAddedInternal(player.Id, friendId);
             Interface.Oxide.NextTick(() => {
-                Interface.Oxide.CallHook("OnFriendAdded", player, friend);
+                Interface.Oxide.CallHook("OnFriendAdded", player.Id, friendId);
             });
             return true;
         }
@@ -675,26 +681,24 @@ namespace Oxide.Plugins
             var player = covalence.Players.GetPlayer(playerId);
             if (player == null)
                 return false;
-            var friend = covalence.Players.GetPlayer(friendId);
-            if (friend == null)
-                return false;
+            var friendOrNull = covalence.Players.GetPlayer(friendId);
             PlayerData data;
-            if (friendsData.TryGetValue(player.Id, out data) && data.Friends.Remove(friend.Id))
+            if (friendsData.TryGetValue(playerId, out data) && data.Friends.Remove(friendId))
             {
                 saveData();
                 HashSet<string> reverseFriendData;
-                if (reverseFriendsData.TryGetValue(friend.Id, out reverseFriendData))
+                if (reverseFriendsData.TryGetValue(friendId, out reverseFriendData))
                 {
-                    reverseFriendData.Remove(player.Id);
+                    reverseFriendData.Remove(playerId);
                     if (reverseFriendData.Count == 0)
-                        reverseFriendsData.Remove(friend.Id);
+                        reverseFriendsData.Remove(friendId);
                 }
-                if (configData.SendRemovedNotification)
-                    friend.Message(_("FriendRemovedNotification", friend), player.Name);
+                if (configData.SendRemovedNotification && friendOrNull != null && friendOrNull.IsConnected)
+                    friendOrNull.Message(_("FriendRemovedNotification", friendOrNull), data.Name);
                 if (OnFriendRemovedInternal != null)
-                    OnFriendRemovedInternal(player.Id, friend.Id);
+                    OnFriendRemovedInternal(player.Id, friendId);
                 Interface.Oxide.NextTick(() => {
-                    Interface.Oxide.CallHook("OnFriendRemoved", player, friend);
+                    Interface.Oxide.CallHook("OnFriendRemoved", player.Id, friendId);
                 });
                 return true;
             }
