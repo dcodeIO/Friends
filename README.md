@@ -84,7 +84,7 @@ Additionally, the plugin emits its own hooks:
 | Hook                                                          | Description
 |---------------------------------------------------------------|-------------
 | OnFriendAdded(**playerId**:`string`, **friendId**:`string`)   | Called when **player** adds **friend** to their friends list, by id.
-| OnFriendRemoved(**playerId**:`string`, **friendId**:`string`) | Called when **player* removes **friend** from their friends list, by id.
+| OnFriendRemoved(**playerId**:`string`, **friendId**:`string`) | Called when **player** removes **friend** from their friends list, by id.
 
 #### Example
 
