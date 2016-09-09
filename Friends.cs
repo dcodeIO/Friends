@@ -644,8 +644,10 @@ namespace Oxide.Plugins
             var friendOrNull = covalence.Players.GetPlayer(friendId);
             if (friendOrNull == null)
             {
-                friendName = GetPlayerNameInternal(friendId);
-                if (friendName == null)
+                PlayerData friendData;
+                if (friendsData.TryGetValue(friendId, out friendData))
+                    friendName = friendData.Name;
+                else
                     return false;
             }
             else
