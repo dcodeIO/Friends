@@ -29,7 +29,7 @@ using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.0.0", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.0.1", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
