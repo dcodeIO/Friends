@@ -29,7 +29,7 @@ using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.1.0", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.2.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin
     {
@@ -66,6 +66,9 @@ namespace Oxide.Plugins
 
         protected override void LoadDefaultConfig() => Config.WriteObject(configData = new ConfigData(), true);
 
+        const int COLOR_SELF   = 0x6cce24,
+                  COLOR_FRIEND = 0x78b1ff;
+
         #endregion
 
         #region Language
@@ -83,26 +86,29 @@ namespace Oxide.Plugins
                 { "AlreadyAFriend", "{0} is already one of your friends." },
                 { "CantAddSelf", "You cannot add yourself to your friends." },
                 { "NoFriends", "You haven't added any friends, yet." },
-                { "List", "You have {0} friends ({1} max.):" },
+                { "List", "You have {0} friends {1} max.):" },
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
                 { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
-                { "FriendChatSent", "Sent to {0} friends: {1}" },
-                { "FriendChatReceived", "[Friend Chat] {0}: {1}" },
-                { "PrivateChatSent", "Sent to {0}: {1}" },
-                { "PrivateChatReceived", "[Private Chat] {0}: {1}" },
 
-                // Chat notifications
+                // Chat
+                { "FriendChatTag", "[FRIENDS]" },
+                { "FriendChatCount", "{0} friends" },
+                { "PrivateChatTag", "[PRIVATE]" },
+                { "ChatSent", "{0} To {1}: {2}" }, // i.e. [FRIENDS] To 4 friends: Hello / [PRIVATE] To CoolGuy: Hello
+                { "ChatReceived", "{0} {1}: {2}" }, // i.e. [PRIVATE] CoolGuy: Hello
+
+                // Notifications
                 { "FriendAddedNotification", "{0} added you as a friend." },
                 { "FriendRemovedNotification", "{0} removed you as a friend." },
                 { "FriendOnlineNotification", "{0} is now online!" },
                 { "FriendOfflineNotification", "{0} is now offline." },
-            
+
                 // Usage text
-                { "UsageAdd", "Use /addfriend NAME... to add a friend" },
-                { "UsageRemove", "Use /removefriend NAME... to remove a friend" },
-                { "UsageFriendChat", "Use /fm MESSAGE... to send a message to all of your friends" },
-                { "UsagePrivateChat", "Use /pm \"NAME...\" MESSAGE... to send a private message" },
+                { "UsageAdd", "Use /addfriend <name...> to add a friend" },
+                { "UsageRemove", "Use /removefriend <name...> to remove a friend" },
+                { "UsageFriendChat", "Use /fm <message...> to send a message to all of your friends" },
+                { "UsagePrivateChat", "Use /pm \"<name...>\" <message...> to send a private message" },
                 { "HelpText", "Type /friends to manage your friends" }
 
             }, this, "en");
@@ -122,22 +128,25 @@ namespace Oxide.Plugins
                 { "ListOnline", "[ONLINE]" },
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
                 { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entweder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
-                { "FriendChatSent", "An {0} Freunde gesendet: {1}" },
-                { "FriendChatReceived", "[Freundes-Chat] {0}: {1}" },
-                { "PrivateChatSent", "Gesendet an {0}: {1}" },
-                { "PrivateChatReceived", "[Privat-Chat] {0}: {1}" },
 
-                // Chat notifications
+                // Chat
+                { "FriendChatTag", "[FREUNDE]" },
+                { "FriendChatCount", "{0} Freunde" },
+                { "PrivateChatTag", "[PRIVAT]" },
+                { "ChatSent", "{0} An {1}: {2}" },
+                { "ChatReceived", "{0} {1}: {2}" },
+
+                // Notifications
                 { "FriendAddedNotification", "{0} hat dich als Freund hinzugefügt." },
                 { "FriendRemovedNotification", "{0} hat dich als Freund entfernt." },
                 { "FriendOnlineNotification", "{0} ist jetzt online!" },
                 { "FriendOfflineNotification", "{0} ist jetzt offline." },
-            
+
                 // Usage text
-                { "UsageAdd", "Verwende /addfriend NAME... um Freunde hinzuzufügen" },
-                { "UsageRemove", "Verwende /removefriend NAME... um Freunde zu entfernen" },
-                { "UsageFriendChat", "Verwende /fm NACHRICHT... um eine Nachricht an alle Freunde zu senden" },
-                { "UsagePrivateChat", "Verwende /pm \"NAME...\" NACHRICHT... um eine private Nachricht zu senden" },
+                { "UsageAdd", "Verwende /addfriend <Name...> um Freunde hinzuzufügen" },
+                { "UsageRemove", "Verwende /removefriend <Name...> um Freunde zu entfernen" },
+                { "UsageFriendChat", "Verwende /fm <Nachricht...> um eine Nachricht an alle Freunde zu senden" },
+                { "UsagePrivateChat", "Verwende /pm \"<Name...>\" <Nachricht...> um eine private Nachricht zu senden" },
                 { "HelpText", "Schreibe /friends um deine Freunde zu verwalten" }
 
             }, this, "de");
@@ -219,11 +228,10 @@ namespace Oxide.Plugins
             return array;
         }
 
-        IPlayer FindPlayer(string nameOrId, out bool multipleMatches)
+        IPlayer findPlayer(string nameOrId, out bool multipleMatches)
         {
             multipleMatches = false;
             var players = covalence.Players.GetAllPlayers();
-            IPlayer found = null;
 
             // First pass: Check for unique player id
             foreach (var player in players)
@@ -231,6 +239,7 @@ namespace Oxide.Plugins
                     return player;
 
             // Second pass: Check for exact name
+            IPlayer found = null;
             foreach (var player in players)
             {
                 if (player.Name == nameOrId)
@@ -260,6 +269,21 @@ namespace Oxide.Plugins
                 }
             }
             return found;
+        }
+
+        static string rgbToHex(int rgb) => ((rgb >> 16) & 0xff).ToString("x2") + ((rgb >> 8) & 0xff).ToString("x2") + (rgb & 0xff).ToString("x2");
+
+        static string Emphasize(string text, int color = -1, bool bold = true)
+        {
+#if RUST || HURTWORLD
+            if (color > -1 && bold)
+                return "<b><color=#" + rgbToHex(color) + ">" + text + "</color></b>";
+            if (color > -1)
+                return "<color=#" + rgbToHex(color) + ">" + text + "</color>";
+            if (bold)
+                return "<b><color=#" + rgbToHex(color) + ">" + text + "</color></b>";
+#endif
+            return text;
         }
 
         #endregion
@@ -423,7 +447,7 @@ namespace Oxide.Plugins
             }
             var nameOrId = string.Join(" ", args);
             bool multipleMatches;
-            var friend = FindPlayer(nameOrId, out multipleMatches);
+            var friend = findPlayer(nameOrId, out multipleMatches);
             if (friend == null)
             {
                 player.Reply(_("PlayerNotFound", player));
@@ -456,22 +480,12 @@ namespace Oxide.Plugins
                 player.Reply("This command cannot be used from the server console.");
                 return;
             }
-            if (args.Length < 1)
+            if (args.Length != 1 || args[0] != "IAMSURE")
             {
                 player.Reply(_("UsageRemove", player));
                 return;
             }
-            var name = string.Join(" ", args);
-            bool multipleMatches;
-            var friend = FindPlayer(name, out multipleMatches);
-            if (friend == null)
-                player.Reply(_("PlayerNotFound", player));
-            else if (multipleMatches)
-                player.Reply(_("MultipleMatches", player));
-            else if (RemoveFriend(player.Id, friend.Id))
-                player.Reply(_("FriendRemoved", player), friend.Name);
-            else
-                player.Reply(_("NotOnFriendlist", player));
+
         }
 
         [Command("fm")]
@@ -501,7 +515,7 @@ namespace Oxide.Plugins
                 player.Reply(_("NoFriends", player));
                 return;
             }
-            int messagesSent = 0;
+            int recipientCount = 0;
             foreach (var friendId in data.Friends)
             {
                 var friend = covalence.Players.GetPlayer(friendId);
@@ -510,12 +524,20 @@ namespace Oxide.Plugins
                     PlayerData friendData;
                     if (!configData.LimitFriendChatToMutualFriends || (friendsData.TryGetValue(friend.Id, out friendData) && friendData.Friends.Contains(player.Id)))
                     {
-                        friend.Message(_("FriendChatReceived", friend), player.Name, message);
-                        ++messagesSent;
+                        friend.Message(_("ChatReceived", friend),
+                            Emphasize(_("FriendChatTag", friend), color: COLOR_FRIEND, bold: true),
+                            Emphasize(player.Name, bold: true),
+                            message
+                        );
+                        ++recipientCount;
                     }
                 }
             }
-            player.Reply(_("FriendChatSent", player), messagesSent, message);
+            player.Reply(_("ChatSent", player),
+                Emphasize(_("FriendChatTag", player), color: COLOR_FRIEND, bold: true),
+                Emphasize(string.Format(_("FriendChatCount", player), recipientCount), bold: true),
+                message
+            );
         }
 
         readonly Regex leadingDoubleQuotedNameEx = new Regex("^\"(?:\\?.)*?\"", RegexOptions.Compiled);
@@ -560,7 +582,7 @@ namespace Oxide.Plugins
                 return;
             }
             bool multipleMatches;
-            var recipient = FindPlayer(name, out multipleMatches);
+            var recipient = findPlayer(name, out multipleMatches);
             if (recipient == null || !recipient.IsConnected)
             {
                 player.Reply(_("PlayerNotFound", player));
@@ -571,9 +593,60 @@ namespace Oxide.Plugins
                 player.Reply(_("MultipleMatches", player));
                 return;
             }
-            player.Message(_("PrivateChatSent", player), recipient.Name, message);
-            recipient.Message(_("PrivateChatReceived", recipient), player.Name, message);
+            recipient.Message(_("ChatReceived", recipient),
+                Emphasize(_("PrivateChatTag", recipient), color: COLOR_SELF, bold: true),
+                Emphasize(player.Name, bold: true),
+                message
+            );
+            player.Message(_("ChatSent", player),
+                Emphasize(_("PrivateChatTag", player), color: COLOR_SELF, bold: true),
+                Emphasize(recipient.Name, bold: true),
+                message
+            );
         }
+
+        #region Game: Rust
+
+#if RUST
+        // See: http://oxidemod.org/plugins/helptext.676/
+        void SendHelpText(BasePlayer player) => player.ChatMessage(_("HelpText", player.userID.ToString()));
+
+        // Cancels targeting if ShareAutoTurrets is enabled and target is a friend of the turret's owner.
+        object OnTurretTarget(AutoTurret turret, BaseCombatEntity target)
+        {
+            BasePlayer player;
+            return configData.Rust.ShareAutoTurrets
+                && (player = (target as BasePlayer)) != null
+                && HasFriend(turret.OwnerID, player.userID)
+                ? @false
+                : null;
+        }
+
+        // Cancels attack if DisableFriendlyFire is enabled and victim is a friend of the attacker.
+        object OnPlayerAttack(BasePlayer attacker, HitInfo hit)
+        {
+            BasePlayer victim;
+            return configData.DisableFriendlyFire
+                && (victim = (hit.HitEntity as BasePlayer)) != null
+                && attacker != victim
+                && HasFriend(attacker.userID, victim.userID)
+                ? @false
+                : null;
+        }
+
+        // Allows door usage if ShareCodeLocks is enabled and player is a friend of the door's owner.
+        object CanUseDoor(BasePlayer player, CodeLock codeLock)
+        {
+            ulong ownerId;
+            return configData.Rust.ShareCodeLocks
+                && (ownerId = codeLock.GetParentEntity().OwnerID) > 0
+                && HasFriend(ownerId.ToString(), player.userID.ToString())
+                ? @true
+                : null;
+        }
+#endif
+
+        #endregion
 
         #endregion
 
@@ -828,49 +901,6 @@ namespace Oxide.Plugins
         object IsFriendOfS(string friendId) => GetFriendsReverse(friendId);
 
         #endregion
-
-        #endregion
-
-        #region Game: Rust
-
-#if RUST
-        // Hook called by HelpText and similar.
-        void SendHelpText(BasePlayer player) => player.ChatMessage(_("HelpText", player.userID.ToString()));
-
-        // Cancels targeting if ShareAutoTurrets is enabled and target is a friend of the turret's owner.
-        object OnTurretTarget(AutoTurret turret, BaseCombatEntity target)
-        {
-            BasePlayer player;
-            return configData.Rust.ShareAutoTurrets
-                && (player = (target as BasePlayer)) != null
-                && HasFriend(turret.OwnerID, player.userID)
-                ? @false
-                : null;
-        }
-
-        // Cancels attack if DisableFriendlyFire is enabled and victim is a friend of the attacker.
-        object OnPlayerAttack(BasePlayer attacker, HitInfo hit)
-        {
-            BasePlayer victim;
-            return configData.DisableFriendlyFire
-                && (victim = (hit.HitEntity as BasePlayer)) != null
-                && attacker != victim
-                && HasFriend(attacker.userID, victim.userID)
-                ? @false
-                : null;
-        }
-
-        // Allows door usage if ShareCodeLocks is enabled and player is a friend of the door's owner.
-        object CanUseDoor(BasePlayer player, CodeLock codeLock)
-        {
-            ulong ownerId;
-            return configData.Rust.ShareCodeLocks
-                && (ownerId = codeLock.GetParentEntity().OwnerID) > 0
-                && HasFriend(ownerId.ToString(), player.userID.ToString())
-                ? @true
-                : null;
-        }
-#endif
 
         #endregion
     }
