@@ -660,10 +660,11 @@ namespace Oxide.Plugins
         }
 
         // Allows door usage if ShareCodeLocks is enabled and player is a friend of the door's owner.
-        object CanUseDoor(BasePlayer player, CodeLock codeLock)
+        object CanUseDoor(BasePlayer player, BaseLock codeLock)
         {
             ulong ownerId;
             return configData.Rust.ShareCodeLocks
+                && (codeLock is CodeLock)
                 && (ownerId = codeLock.GetParentEntity().OwnerID) > 0
                 && HasFriend(ownerId.ToString(), player.userID.ToString())
                 ? @true
