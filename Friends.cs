@@ -27,11 +27,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
+interface IBattleLinkFriends // BattleLink integration interface for reference
+{
+    event    Action<string, string>    OnFriendAddedInternal;
+    event    Action<string, string>    OnFriendRemovedInternal;
+
+    int      GetMaxFriendsInternal     ();
+    string   GetPlayerNameInternal     (string playerId);
+    bool     HasFriendInternal         (string playerId, string friendId);
+    bool     AreFriendsInternal        (string playerId, string friendId);
+    bool     AddFriendInternal         (string playerId, string friendId);
+    bool     RemoveFriendInternal      (string playerId, string friendId);
+    string[] GetFriendsInternal        (string playerId);
+    string[] GetFriendsReverseInternal (string playerId);
+}
+
 namespace Oxide.Plugins
 {
     [Info("Friends", "dcode", "2.2.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
-    public class Friends : CovalencePlugin
+    public class Friends : CovalencePlugin, IBattleLinkFriends
     {
         #region Config
 
@@ -439,7 +454,7 @@ namespace Oxide.Plugins
             {
                 player.Reply("This command cannot be used from the server console.");
                 return;
-            } 
+            }
             if (args.Length < 1)
             {
                 player.Reply(_("UsageAdd", player));
@@ -550,7 +565,7 @@ namespace Oxide.Plugins
             );
         }
 
-        readonly Regex leadingDoubleQuotedNameEx = new Regex("^\"(?:\\?.)*?\"", RegexOptions.Compiled);
+        readonly static Regex leadingDoubleQuotedNameEx = new Regex("^\"(?:\\?.)*?\"", RegexOptions.Compiled);
 
         [Command("pm")]
         void cmdPrivateChat(IPlayer player, string command, string[] args)
@@ -632,7 +647,7 @@ namespace Oxide.Plugins
                 : null;
         }
 
-        // Cancels attack if DisableFriendlyFire is enabled and victim is a friend of the attacker.
+        // Cancels the attack if DisableFriendlyFire is enabled and victim is a friend of the attacker.
         object OnPlayerAttack(BasePlayer attacker, HitInfo hit)
         {
             BasePlayer victim;
@@ -660,21 +675,7 @@ namespace Oxide.Plugins
 
         #endregion
 
-        #region BattleLink Implementation
-
-        /* interface IBattleLinkFriends
-        {
-            event    Action<string, string>    OnFriendAddedInternal;
-            event    Action<string, string>    OnFriendRemovedInternal;
-            int      GetMaxFriendsInternal     ();
-            string   GetPlayerNameInternal     (string playerId);
-            bool     HasFriendInternal         (string playerId, string friendId);
-            bool     AreFriendsInternal        (string playerId, string friendId);
-            bool     AddFriendInternal         (string playerId, string friendId);
-            bool     RemoveFriendInternal      (string playerId, string friendId);
-            string[] GetFriendsInternal        (string playerId);
-            string[] GetFriendsReverseInternal (string playerId);
-        } */
+        #region BattleLink Integration
 
         public event Action<string, string> OnFriendAddedInternal;
 
@@ -690,17 +691,15 @@ namespace Oxide.Plugins
                 PlayerData data;
                 if (friendsData.TryGetValue(playerId, out data))
                     return data.Name;
+                else
+                    return "#" + playerId;
             }
-            else
+            if (!friendsData.ContainsKey(iplayer.Id))
             {
-                if (!friendsData.ContainsKey(iplayer.Id))
-                {
-                    friendsData.Add(iplayer.Id, new PlayerData() { Name = iplayer.Name, Friends = new HashSet<string>() });
-                    saveData();
-                }
-                return iplayer.Name;
+                friendsData.Add(iplayer.Id, new PlayerData() { Name = iplayer.Name, Friends = new HashSet<string>() });
+                saveData();
             }
-            return "#" + playerId;
+            return iplayer.Name;
         }
 
         public bool HasFriendInternal(string playerId, string friendId)
@@ -752,7 +751,10 @@ namespace Oxide.Plugins
             else
                 reverseFriendsData.Add(friendId, new HashSet<string>() { player.Id });
             if (configData.SendAddedNotification && friendOrNull != null && friendOrNull.IsConnected)
+            {
                 friendOrNull.Message(_("FriendAddedNotification", friendOrNull), player.Name);
+                friendOrNull.Message(_("UsageAdd", friendOrNull));
+            }
             if (OnFriendAddedInternal != null)
                 OnFriendAddedInternal(player.Id, friendId);
             Interface.Oxide.NextTick(() => {
@@ -793,19 +795,17 @@ namespace Oxide.Plugins
         public string[] GetFriendsInternal(string playerId)
         {
             PlayerData data;
-            if (friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0)
-                return data.Friends.ToArray();
-            else
-                return emptyStringArray;
+            return (friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0)
+                ? data.Friends.ToArray()
+                : emptyStringArray;
         }
 
         public string[] GetFriendsReverseInternal(string playerId)
         {
             HashSet<string> reverseFriendData;
-            if (reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0)
-                return reverseFriendData.ToArray();
-            else
-                return emptyStringArray;
+            return (reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0)
+                ? reverseFriendData.ToArray()
+                : emptyStringArray;
         }
 
         #endregion
