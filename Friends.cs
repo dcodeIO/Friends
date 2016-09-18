@@ -44,7 +44,7 @@ interface IBattleLinkFriends // BattleLink integration interface for reference
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.2.0", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.3.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin, IBattleLinkFriends
     {
@@ -78,6 +78,8 @@ namespace Oxide.Plugins
 #endif
 
         ConfigData configData;
+
+        void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
         protected override void LoadDefaultConfig() => Config.WriteObject(configData = new ConfigData(), true);
 
@@ -124,6 +126,7 @@ namespace Oxide.Plugins
                 { "UsageRemove", "Use /removefriend <name...> to remove a friend" },
                 { "UsageFriendChat", "Use /fm <message...> to send a message to all of your friends" },
                 { "UsagePrivateChat", "Use /pm \"<name...>\" <message...> to send a private message" },
+                { "UsageReplyChat", "Use /rm <message...> to reply to the last message received" },
                 { "HelpText", "Type /friends to manage your friends" }
 
             }, this, "en");
@@ -162,6 +165,7 @@ namespace Oxide.Plugins
                 { "UsageRemove", "Verwende /removefriend <Name...> um Freunde zu entfernen" },
                 { "UsageFriendChat", "Verwende /fm <Nachricht...> um eine Nachricht an alle Freunde zu senden" },
                 { "UsagePrivateChat", "Verwende /pm \"<Name...>\" <Nachricht...> um eine private Nachricht zu senden" },
+                { "UsagePrivateChat", "Verwende /rm <Nachricht...> um auf die letzte erhaltene Nachricht zu antworten" },
                 { "HelpText", "Schreibe /friends um deine Freunde zu verwalten" }
 
             }, this, "de");
@@ -186,8 +190,6 @@ namespace Oxide.Plugins
         Dictionary<string, HashSet<string>> reverseFriendsData;
 
         void loadData() => friendsData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<string, PlayerData>>(Name);
-
-        void loadConfig() => configData = Config.ReadObject<ConfigData>();
 
         Timer saveDataBatchedTimer = null;
 
@@ -445,6 +447,8 @@ namespace Oxide.Plugins
                 player.Message(_("UsageFriendChat", player));
             if (configData.EnablePrivateChat)
                 player.Message(_("UsagePrivateChat", player));
+            if (configData.EnableFriendChat || configData.EnablePrivateChat)
+                player.Message(_("UsageReplyChat", player));
         }
 
         [Command("addfriend")]
@@ -513,7 +517,9 @@ namespace Oxide.Plugins
                 player.Reply(_("NotOnFriendlist", player));
         }
 
-        [Command("fm")]
+        Dictionary<string, string> replyTo = new Dictionary<string, string>();
+
+        [Command("fm", "f")]
         void cmdFriendChat(IPlayer player, string command, string[] args)
         {
             if (!configData.EnableFriendChat)
@@ -554,6 +560,7 @@ namespace Oxide.Plugins
                             Emphasize(player.Name, bold: true),
                             message
                         );
+                        replyTo[friend.Id] = player.Id;
                         ++recipientCount;
                     }
                 }
@@ -567,7 +574,7 @@ namespace Oxide.Plugins
 
         readonly static Regex leadingDoubleQuotedNameEx = new Regex("^\"(?:\\?.)*?\"", RegexOptions.Compiled);
 
-        [Command("pm")]
+        [Command("pm", "p", "m")]
         void cmdPrivateChat(IPlayer player, string command, string[] args)
         {
             if (!configData.EnablePrivateChat)
@@ -623,6 +630,45 @@ namespace Oxide.Plugins
                 Emphasize(player.Name, bold: true),
                 message
             );
+            replyTo[recipient.Id] = player.Id;
+            player.Message(_("ChatSent", player),
+                Emphasize(_("PrivateChatTag", player), color: COLOR_SELF, bold: true),
+                Emphasize(recipient.Name, bold: true),
+                message
+            );
+        }
+
+        [Command("rm", "r")]
+        void cmdReplyChat(IPlayer player, string command, string[] args)
+        {
+            if (!(configData.EnablePrivateChat || configData.EnableFriendChat))
+                return;
+            if (player.Id == "server_console")
+            {
+                player.Reply("This command cannot be used from the server console.");
+                return;
+            }
+            var message = string.Join(" ", args).Trim();
+            if (message.Length == 0)
+            {
+                player.Reply(_("UsageReplyChat", player));
+                return;
+            }
+            string recipientId;
+            if (!replyTo.TryGetValue(player.Id, out recipientId))
+                return;
+            var recipient = covalence.Players.GetPlayer(recipientId);
+            if (recipient == null)
+            {
+                player.Reply(_("PlayerNotFound", player));
+                return;
+            }
+            recipient.Message(_("ChatReceived", recipient),
+                Emphasize(_("PrivateChatTag", recipient), color: COLOR_SELF, bold: true),
+                Emphasize(player.Name, bold: true),
+                message
+            );
+            replyTo[recipient.Id] = player.Id;
             player.Message(_("ChatSent", player),
                 Emphasize(_("PrivateChatTag", player), color: COLOR_SELF, bold: true),
                 Emphasize(recipient.Name, bold: true),
