@@ -27,7 +27,7 @@ As a player, this is how you use the plugin:
 | /addfriend *name...*         |        | Adds a player to your friends
 | /removefriend *name...*      |        | Removes a player from your friends
 | /fm *message...*             | /f     | Broadcasts a message to all of your friends
-| /pm "*name...*" *message...* | /p, /m | Sends a private message to the specified player
+| /pm "*name...*" *message...* | /m     | Sends a private message to the specified player
 | /rm *message...*             | /r     | Replies to the last message received
 
 You can also use the respective unique player id (i.e. Steam ID) instead of a player's name in case that there are multiple

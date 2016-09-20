@@ -44,7 +44,7 @@ interface IBattleLinkFriends // BattleLink integration interface for reference
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.3.0", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.3.1", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin, IBattleLinkFriends
     {
@@ -517,7 +517,7 @@ namespace Oxide.Plugins
                 player.Reply(_("NotOnFriendlist", player));
         }
 
-        Dictionary<string, string> replyTo = new Dictionary<string, string>();
+        readonly Dictionary<string, string> replyTo = new Dictionary<string, string>();
 
         [Command("fm", "f")]
         void cmdFriendChat(IPlayer player, string command, string[] args)
@@ -574,7 +574,7 @@ namespace Oxide.Plugins
 
         readonly static Regex leadingDoubleQuotedNameEx = new Regex("^\"(?:\\?.)*?\"", RegexOptions.Compiled);
 
-        [Command("pm", "p", "m")]
+        [Command("pm", "m")]
         void cmdPrivateChat(IPlayer player, string command, string[] args)
         {
             if (!configData.EnablePrivateChat)
