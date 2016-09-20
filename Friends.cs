@@ -44,7 +44,7 @@ interface IBattleLinkFriends // BattleLink integration interface for reference
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.3.1", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.4.0", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin, IBattleLinkFriends
     {
@@ -83,9 +83,6 @@ namespace Oxide.Plugins
 
         protected override void LoadDefaultConfig() => Config.WriteObject(configData = new ConfigData(), true);
 
-        const int COLOR_SELF   = 0x6cce24,
-                  COLOR_FRIEND = 0x78b1ff;
-
         #endregion
 
         #region Language
@@ -98,36 +95,38 @@ namespace Oxide.Plugins
                 // Command replies
                 { "PlayerNotFound", "There is no player matching that name." },
                 { "NotOnFriendlist", "You don't have a friend matching that name." },
-                { "FriendAdded", "{0} is now one of your friends." },
-                { "FriendRemoved", "{0} is no longer one of your friends." },
-                { "AlreadyAFriend", "{0} is already one of your friends." },
+                { "FriendAdded", "[b]{0}[/b] is now one of your friends." },
+                { "FriendRemoved", "[b]{0}[/b] is no longer one of your friends." },
+                { "AlreadyAFriend", "[b]{0}[/b] is already one of your friends." },
                 { "CantAddSelf", "You cannot add yourself to your friends." },
                 { "NoFriends", "You haven't added any friends, yet." },
-                { "List", "You have {0} friends ({1} max.):" },
-                { "ListOnline", "[ONLINE]" },
+                { "List", "You have [b]{0}[/b] friends ({1} max.):" },
+                { "List1", "You have [b]{0}[/b] friend ({1} max.):" },
+                { "ListOnline", "[#6cce24](online)[/#]" },
                 { "FriendlistFull", "You have already reached the maximum number of friends." },
                 { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
 
                 // Chat
-                { "FriendChatTag", "[FRIENDS]" },
+                { "FriendChatTag", "[#78b1ff](FRIENDS)[/#]" },
                 { "FriendChatCount", "{0} friends" },
-                { "PrivateChatTag", "[PRIVATE]" },
-                { "ChatSent", "{0} To {1}: {2}" }, // i.e. [FRIENDS] To 4 friends: Hello / [PRIVATE] To CoolGuy: Hello
-                { "ChatReceived", "{0} {1}: {2}" }, // i.e. [PRIVATE] CoolGuy: Hello
+                { "FriendChatCount1", "{0} friend" },
+                { "PrivateChatTag", "[#6cce24](PRIVATE)[/#]" },
+                { "ChatSent", "To [b]{0}[/b]: {1}" },
+                { "ChatReceived", "[b]{0}[/b]: {1}" },
 
                 // Notifications
-                { "FriendAddedNotification", "{0} added you as a friend." },
-                { "FriendRemovedNotification", "{0} removed you as a friend." },
-                { "FriendOnlineNotification", "{0} is now online!" },
-                { "FriendOfflineNotification", "{0} is now offline." },
+                { "FriendAddedNotification", "[b]{0}[/b] added you as a friend." },
+                { "FriendRemovedNotification", "[b]{0}[/b] removed you as a friend." },
+                { "FriendOnlineNotification", "[b]{0}[/b] is now online!" },
+                { "FriendOfflineNotification", "[b]{0}[/b] is now offline." },
 
                 // Usage text
-                { "UsageAdd", "Use /addfriend <name...> to add a friend" },
-                { "UsageRemove", "Use /removefriend <name...> to remove a friend" },
-                { "UsageFriendChat", "Use /fm <message...> to send a message to all of your friends" },
-                { "UsagePrivateChat", "Use /pm \"<name...>\" <message...> to send a private message" },
-                { "UsageReplyChat", "Use /rm <message...> to reply to the last message received" },
-                { "HelpText", "Type /friends to manage your friends" }
+                { "UsageAdd", "Type [#ffd479]/addfriend <name...>[/#] to add a friend" },
+                { "UsageRemove", "Type [#ffd479]/removefriend <name...>[/#] to remove a friend" },
+                { "UsageFriendChat", "Type [#ffd479]/fm <message...>[/#] to send a message to all of your friends" },
+                { "UsagePrivateChat", "Type [#ffd479]/pm \"<name...>\" <message...>[/#] to send a private message" },
+                { "UsageReplyChat", "Type [#ffd479]/rm <message...>[/#] to reply to the last message received" },
+                { "HelpText", "Type [#ffd479]/friends[/#] to manage your friends" }
 
             }, this, "en");
 
@@ -137,43 +136,45 @@ namespace Oxide.Plugins
                 // Command replies
                 { "PlayerNotFound", "Es gibt keinen Spieler unter diesem Namen." },
                 { "NotOnFriendlist", "Auf deiner Freundeliste befindet sich kein Spieler mit diesem Namen." },
-                { "FriendAdded", "{0} ist nun einer deiner Freunde." },
-                { "FriendRemoved", "{0} ist nun nicht mehr dein Freund." },
-                { "AlreadyAFriend", "{0} ist bereits dein Freund." },
+                { "FriendAdded", "[b]{0}[/b] ist nun einer deiner Freunde." },
+                { "FriendRemoved", "[b]{0}[/b] ist nun nicht mehr dein Freund." },
+                { "AlreadyAFriend", "[b]{0}[/b] ist bereits dein Freund." },
                 { "CantAddSelf", "Du kannst dich nicht selbst als Freund hinzufügen." },
                 { "NoFriends", "Du hast noch keine Freunde hinzugefügt." },
-                { "List", "Du hast {0} Freunde (max. {1}):" },
-                { "ListOnline", "[ONLINE]" },
+                { "List", "Du hast [b]{0}[/b] Freunde (max. {1}):" },
+                { "List1", "Du hast [b]{0}[/b] Freund (max. {1}):" },
+                { "ListOnline", "[#6cce24](online)[/#]" },
                 { "FriendlistFull", "Du hast bereits die maximale Anzahl an Freunden erreicht." },
                 { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entweder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
 
                 // Chat
-                { "FriendChatTag", "[FREUNDE]" },
+                { "FriendChatTag", "[b][#78b1ff](FREUNDE)[/#][/b]" },
                 { "FriendChatCount", "{0} Freunde" },
-                { "PrivateChatTag", "[PRIVAT]" },
-                { "ChatSent", "{0} An {1}: {2}" },
-                { "ChatReceived", "{0} {1}: {2}" },
+                { "FriendChatCount1", "{0} Freund" },
+                { "PrivateChatTag", "[b][#6cce24](PRIVAT)[/#][/b]" },
+                { "ChatSent", "An [b]{1}[/b]: {2}" },
+                { "ChatReceived", "[b]{1}[/b]: {2}" },
 
                 // Notifications
-                { "FriendAddedNotification", "{0} hat dich als Freund hinzugefügt." },
-                { "FriendRemovedNotification", "{0} hat dich als Freund entfernt." },
-                { "FriendOnlineNotification", "{0} ist jetzt online!" },
-                { "FriendOfflineNotification", "{0} ist jetzt offline." },
+                { "FriendAddedNotification", "[b]{0}[/b] hat dich als Freund hinzugefügt." },
+                { "FriendRemovedNotification", "[b]{0}[/b] hat dich als Freund entfernt." },
+                { "FriendOnlineNotification", "[b]{0}[/b] ist jetzt online!" },
+                { "FriendOfflineNotification", "[b]{0}[/b] ist jetzt offline." },
 
                 // Usage text
-                { "UsageAdd", "Verwende /addfriend <Name...> um Freunde hinzuzufügen" },
-                { "UsageRemove", "Verwende /removefriend <Name...> um Freunde zu entfernen" },
-                { "UsageFriendChat", "Verwende /fm <Nachricht...> um eine Nachricht an alle Freunde zu senden" },
-                { "UsagePrivateChat", "Verwende /pm \"<Name...>\" <Nachricht...> um eine private Nachricht zu senden" },
-                { "UsagePrivateChat", "Verwende /rm <Nachricht...> um auf die letzte erhaltene Nachricht zu antworten" },
-                { "HelpText", "Schreibe /friends um deine Freunde zu verwalten" }
+                { "UsageAdd", "Schreibe [#ffd479]/addfriend <Name...>[/#] um Freunde hinzuzufügen" },
+                { "UsageRemove", "Schreibe [#ffd479]/removefriend <Name...>[/#] um Freunde zu entfernen" },
+                { "UsageFriendChat", "Schreibe [#ffd479]/fm <Nachricht...>[/#] um eine Nachricht an alle Freunde zu senden" },
+                { "UsagePrivateChat", "Schreibe [#ffd479]/pm \"<Name...>\" <Nachricht...>[/#] um eine private Nachricht zu senden" },
+                { "UsagePrivateChat", "Schreibe [#ffd479]/rm <Nachricht...>[/#] um auf die letzte erhaltene Nachricht zu antworten" },
+                { "HelpText", "Schreibe [#ffd479]/friends[/#] um deine Freunde zu verwalten" }
 
             }, this, "de");
 
         }
 
-        string _(string key, IPlayer recipient) => lang.GetMessage(key, this, recipient.Id);
-        string _(string key, string recipientId) => lang.GetMessage(key, this, recipientId);
+        string _(string key, IPlayer recipient) => covalence.FormatText(lang.GetMessage(key, this, recipient.Id));
+        string _(string key, string recipientId) => covalence.FormatText(lang.GetMessage(key, this, recipientId));
 
         #endregion
 
@@ -222,7 +223,7 @@ namespace Oxide.Plugins
 
         readonly static Type stringType = typeof(string);
 
-        static Array makeEmptyTypedArray(Type type)
+        static Array makeTypedArray(Type type)
         {
             if (type == stringType)
                 throw new ArgumentException("the string type should never be added", "type");
@@ -237,7 +238,7 @@ namespace Oxide.Plugins
         {
             var size = stringCollection.Count;
             if (size == 0)
-                return makeEmptyTypedArray(type);
+                return makeTypedArray(type);
             var array = Array.CreateInstance(type, size);
             var index = 0;
             foreach (var value in stringCollection)
@@ -286,21 +287,6 @@ namespace Oxide.Plugins
                 }
             }
             return found;
-        }
-
-        static string rgbToHex(int rgb) => ((rgb >> 16) & 0xff).ToString("x2") + ((rgb >> 8) & 0xff).ToString("x2") + (rgb & 0xff).ToString("x2");
-
-        static string Emphasize(string text, int color = -1, bool bold = true)
-        {
-#if RUST || HURTWORLD
-            if (color > -1 && bold)
-                return "<b><color=#" + rgbToHex(color) + ">" + text + "</color></b>";
-            if (color > -1)
-                return "<color=#" + rgbToHex(color) + ">" + text + "</color>";
-            if (bold)
-                return "<b>" + text + "</b>";
-#endif
-            return text;
         }
 
         #endregion
@@ -408,7 +394,7 @@ namespace Oxide.Plugins
             {
                 List<string> onlineList = new List<string>(configData.MaxFriends);
                 List<string> offlineList = new List<string>(configData.MaxFriends);
-                player.Reply(_("List", player), count, configData.MaxFriends);
+                player.Reply(_(count == 1 ? "List1" : "List", player), count, configData.MaxFriends);
                 foreach (var friendId in data.Friends)
                 {
                     // Sort friends by online status and name (must be mutual friends to show online status)
@@ -555,9 +541,8 @@ namespace Oxide.Plugins
                     PlayerData friendData;
                     if (!configData.LimitFriendChatToMutualFriends || (friendsData.TryGetValue(friend.Id, out friendData) && friendData.Friends.Contains(player.Id)))
                     {
-                        friend.Message(_("ChatReceived", friend),
-                            Emphasize(_("FriendChatTag", friend), color: COLOR_FRIEND, bold: true),
-                            Emphasize(player.Name, bold: true),
+                        friend.Message(_("FriendChatTag", friend) + " " + _("ChatReceived", friend),
+                            player.Name,
                             message
                         );
                         replyTo[friend.Id] = player.Id;
@@ -565,9 +550,8 @@ namespace Oxide.Plugins
                     }
                 }
             }
-            player.Reply(_("ChatSent", player),
-                Emphasize(_("FriendChatTag", player), color: COLOR_FRIEND, bold: true),
-                Emphasize(string.Format(_("FriendChatCount", player), recipientCount), bold: true),
+            player.Reply(_("FriendChatTag", player) + " " + _("ChatSent", player),
+                string.Format(_(recipientCount == 1 ? "FriendChatCount1" : "FriendChatCount", player), recipientCount),
                 message
             );
         }
@@ -625,15 +609,13 @@ namespace Oxide.Plugins
                 player.Reply(_("MultipleMatches", player));
                 return;
             }
-            recipient.Message(_("ChatReceived", recipient),
-                Emphasize(_("PrivateChatTag", recipient), color: COLOR_SELF, bold: true),
-                Emphasize(player.Name, bold: true),
+            recipient.Message(_("PrivateChatTag", recipient) + " " + _("ChatReceived", recipient),
+                player.Name,
                 message
             );
             replyTo[recipient.Id] = player.Id;
-            player.Message(_("ChatSent", player),
-                Emphasize(_("PrivateChatTag", player), color: COLOR_SELF, bold: true),
-                Emphasize(recipient.Name, bold: true),
+            player.Message(_("PrivateChatTag", player) + " " + _("ChatSent", player),
+                recipient.Name,
                 message
             );
         }
@@ -663,15 +645,13 @@ namespace Oxide.Plugins
                 player.Reply(_("PlayerNotFound", player));
                 return;
             }
-            recipient.Message(_("ChatReceived", recipient),
-                Emphasize(_("PrivateChatTag", recipient), color: COLOR_SELF, bold: true),
-                Emphasize(player.Name, bold: true),
+            recipient.Message(_("PrivateChatTag", recipient) + " " + _("ChatReceived", recipient),
+                player.Name,
                 message
             );
             replyTo[recipient.Id] = player.Id;
-            player.Message(_("ChatSent", player),
-                Emphasize(_("PrivateChatTag", player), color: COLOR_SELF, bold: true),
-                Emphasize(recipient.Name, bold: true),
+            player.Message(_("PrivateChatTag", player) + " " + _("ChatSent", player),
+                recipient.Name,
                 message
             );
         }
@@ -842,7 +822,7 @@ namespace Oxide.Plugins
         public string[] GetFriendsInternal(string playerId)
         {
             PlayerData data;
-            return (friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0)
+            return friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0
                 ? data.Friends.ToArray()
                 : emptyStringArray;
         }
@@ -850,7 +830,7 @@ namespace Oxide.Plugins
         public string[] GetFriendsReverseInternal(string playerId)
         {
             HashSet<string> reverseFriendData;
-            return (reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0)
+            return reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0
                 ? reverseFriendData.ToArray()
                 : emptyStringArray;
         }
@@ -917,14 +897,10 @@ namespace Oxide.Plugins
                 throw new ArgumentNullException("playerId");
             if (playerId is string)
                 return GetFriendsInternal(playerId as string);
-            else
-            {
-                PlayerData data;
-                if (friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0)
-                    return makeTypedArray(playerId.GetType(), data.Friends);
-                else
-                    return makeEmptyTypedArray(playerId.GetType());
-            }
+            PlayerData data;
+            return friendsData.TryGetValue(playerId.ToString(), out data) && data.Friends.Count > 0 
+                ? makeTypedArray(playerId.GetType(), data.Friends)
+                : makeTypedArray(playerId.GetType());
         }
 
         // Gets an array of players who have added friend to their friends list, by id.
@@ -934,14 +910,10 @@ namespace Oxide.Plugins
                 throw new ArgumentNullException("playerId");
             if (playerId is string)
                 return GetFriendsReverseInternal(playerId as string);
-            else
-            {
-                HashSet<string> reverseFriendData;
-                if (reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0)
-                    return makeTypedArray(playerId.GetType(), reverseFriendData);
-                else
-                    return makeEmptyTypedArray(playerId.GetType());
-            }
+            HashSet<string> reverseFriendData;
+            return reverseFriendsData.TryGetValue(playerId.ToString(), out reverseFriendData) && reverseFriendData.Count > 0
+                ? makeTypedArray(playerId.GetType(), reverseFriendData)
+                : makeTypedArray(playerId.GetType());
         }
 
         #region Cmpatibility layer for http://oxidemod.org/plugins/friends-api.686/
