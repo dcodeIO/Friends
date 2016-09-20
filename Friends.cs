@@ -107,10 +107,10 @@ namespace Oxide.Plugins
                 { "MultipleMatches", "There are multiple players matching that name. Either try to be more precise or use your friend's unique player id instead." },
 
                 // Chat
-                { "FriendChatTag", "[#78b1ff](FRIENDS)[/#]" },
+                { "FriendChatTag", "[b][#78b1ff](Friends)[/#][/b]" },
                 { "FriendChatCount", "{0} friends" },
                 { "FriendChatCount1", "{0} friend" },
-                { "PrivateChatTag", "[#6cce24](PRIVATE)[/#]" },
+                { "PrivateChatTag", "[b][#6cce24](Private)[/#][/b]" },
                 { "ChatSent", "To [b]{0}[/b]: {1}" },
                 { "ChatReceived", "[b]{0}[/b]: {1}" },
 
@@ -148,10 +148,10 @@ namespace Oxide.Plugins
                 { "MultipleMatches", "Es gibt mehrere Spieler, deren Name zu diesem passt. Versuche entweder präziser zu sein oder verwende die eindeutige Spieler-ID deines Freundes." },
 
                 // Chat
-                { "FriendChatTag", "[b][#78b1ff](FREUNDE)[/#][/b]" },
+                { "FriendChatTag", "[b][#78b1ff](Freunde)[/#][/b]" },
                 { "FriendChatCount", "{0} Freunde" },
                 { "FriendChatCount1", "{0} Freund" },
-                { "PrivateChatTag", "[b][#6cce24](PRIVAT)[/#][/b]" },
+                { "PrivateChatTag", "[b][#6cce24](Privat)[/#][/b]" },
                 { "ChatSent", "An [b]{1}[/b]: {2}" },
                 { "ChatReceived", "[b]{1}[/b]: {2}" },
 
