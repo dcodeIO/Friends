@@ -166,7 +166,7 @@ namespace Oxide.Plugins
                 { "UsageRemove", "Schreibe [#ffd479]/removefriend <Name...>[/#] um Freunde zu entfernen" },
                 { "UsageFriendChat", "Schreibe [#ffd479]/fm <Nachricht...>[/#] um eine Nachricht an alle Freunde zu senden" },
                 { "UsagePrivateChat", "Schreibe [#ffd479]/pm \"<Name...>\" <Nachricht...>[/#] um eine private Nachricht zu senden" },
-                { "UsagePrivateChat", "Schreibe [#ffd479]/rm <Nachricht...>[/#] um auf die letzte erhaltene Nachricht zu antworten" },
+                { "UsageReplyChat", "Schreibe [#ffd479]/rm <Nachricht...>[/#] um auf die letzte erhaltene Nachricht zu antworten" },
                 { "HelpText", "Schreibe [#ffd479]/friends[/#] um deine Freunde zu verwalten" }
 
             }, this, "de");
@@ -599,7 +599,7 @@ namespace Oxide.Plugins
             }
             bool multipleMatches;
             var recipient = findPlayer(name, out multipleMatches);
-            if (recipient == null || !recipient.IsConnected)
+            if (recipient == null || !recipient.IsConnected || recipient.Id == player.Id)
             {
                 player.Reply(_("PlayerNotFound", player));
                 return;
