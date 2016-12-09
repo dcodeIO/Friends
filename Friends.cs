@@ -44,7 +44,7 @@ interface IBattleLinkFriends // BattleLink integration interface for reference
 
 namespace Oxide.Plugins
 {
-    [Info("Friends", "dcode", "2.5.0", ResourceId = 2120)]
+    [Info("Friends", "dcode", "2.5.2", ResourceId = 2120)]
     [Description("Universal friends plugin.")]
     public class Friends : CovalencePlugin, IBattleLinkFriends
     {
